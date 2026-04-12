@@ -30,6 +30,7 @@ export async function GET(
     previousScore: row.previousScore,
     previousDecision: row.previousDecision,
     summary: row.summary,
+    prCommentUrl: row.prCommentUrl,
     modelVersion: row.modelVersion,
     createdAt: row.createdAt.toISOString(),
     issues: row.issues.map((i) => ({

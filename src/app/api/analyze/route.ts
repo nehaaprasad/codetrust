@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import type { CodeFile } from "@/lib/analysis/checks";
 import { analyzeFiles } from "@/lib/analysis/run";
 import { fetchPrFilesForAnalysis } from "@/lib/github/fetchPrFiles";
-import { parseGithubPrUrl } from "@/lib/github/parsePrUrl";
+import {
+  parseGithubPrUrl,
+  type ParsedPrUrl,
+} from "@/lib/github/parsePrUrl";
+import { buildPrCommentBody, postPrComment } from "@/lib/github/postPrComment";
 import { isDatabaseConfigured, getPrisma } from "@/lib/db";
 import { saveAnalysis, type StoredAnalysisInput } from "@/lib/persistAnalysis";
 import { analyzeBodySchema } from "@/lib/validation/analyze";
@@ -27,6 +31,7 @@ export async function POST(req: Request) {
   let files: CodeFile[];
   let stored: StoredAnalysisInput;
   let projectId: string | null = null;
+  let parsedPr: ParsedPrUrl | null = null;
 
   if (data.prUrl?.trim()) {
     const token = process.env.GITHUB_TOKEN;
@@ -40,12 +45,14 @@ export async function POST(req: Request) {
       );
     }
     const url = data.prUrl.trim();
-    if (!parseGithubPrUrl(url)) {
+    const prParsed = parseGithubPrUrl(url);
+    if (!prParsed) {
       return NextResponse.json(
         { error: "Invalid GitHub pull request URL format." },
         { status: 400 },
       );
     }
+    parsedPr = prParsed;
     try {
       const pr = await fetchPrFilesForAnalysis(url, token);
       files = pr.files;
@@ -87,10 +94,27 @@ export async function POST(req: Request) {
 
   const result = await analyzeFiles(files);
 
+  let prCommentUrl: string | null = null;
+  if (parsedPr) {
+    const postComment = process.env.GITHUB_POST_PR_COMMENT !== "false";
+    const ghToken = process.env.GITHUB_TOKEN;
+    if (postComment && ghToken) {
+      try {
+        const commentBody = buildPrCommentBody(result);
+        const { htmlUrl } = await postPrComment(ghToken, parsedPr, commentBody);
+        prCommentUrl = htmlUrl;
+      } catch (e) {
+        console.error("GitHub PR comment failed:", e);
+      }
+    }
+  }
+
   let id: string | null = null;
   if (isDatabaseConfigured()) {
     try {
-      const row = await saveAnalysis(result, stored, projectId);
+      const row = await saveAnalysis(result, stored, projectId, {
+        prCommentUrl,
+      });
       id = row.id;
     } catch (e) {
       console.error(e);
@@ -103,6 +127,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     id,
+    prCommentUrl,
     modelVersion: result.modelVersion,
     score: result.score,
     decision: result.decision,
