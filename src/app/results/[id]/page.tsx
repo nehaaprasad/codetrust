@@ -12,6 +12,7 @@ type AnalysisPayload = {
   previousScore: number | null;
   previousDecision: string | null;
   summary: string;
+  prCommentUrl: string | null;
   createdAt: string;
   issues: {
     category: string;
@@ -92,6 +93,18 @@ export default function ResultPage() {
           <p className="text-xs uppercase text-zinc-500">
             {new Date(data.createdAt).toLocaleString()}
           </p>
+          {data.prCommentUrl ? (
+            <p className="text-sm">
+              <a
+                href={data.prCommentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-emerald-700 underline dark:text-emerald-400"
+              >
+                View comment on GitHub
+              </a>
+            </p>
+          ) : null}
           <div className="flex flex-wrap items-end gap-8">
             <div>
               <p className="text-xs uppercase text-zinc-500">Trust score</p>

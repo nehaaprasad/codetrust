@@ -2,7 +2,7 @@
 
 Local web app that runs **deterministic checks** on pasted code or a GitHub PR, optionally adds an **OpenAI JSON review pass** when `OPENAI_API_KEY` is set, then combines everything into a **weighted score** and a **ship verdict** (SAFE / RISKY / BLOCK). Results can be stored in Postgres.
 
-Not implemented yet: background job queues, GitHub OAuth, and posting results back to a pull request as a comment.
+Not implemented yet: background job queues (BullMQ/Redis) and GitHub sign-in. For PR URLs, the app can **post a summary comment** on the pull request when `GITHUB_TOKEN` has permission (disable with `GITHUB_POST_PR_COMMENT=false`).
 
 ### Where the backend lives
 
@@ -75,7 +75,7 @@ If `OPENAI_API_KEY` is missing or `ENABLE_LLM=false`, the OpenAI step is skipped
 | Path | Role |
 |------|------|
 | `src/lib/analysis/` | Checks, LLM enrich (`llmEnrich.ts`), weights, scoring, decision, summary |
-| `src/lib/github/` | Parse PR URL, fetch files via Octokit |
+| `src/lib/github/` | Parse PR URL, fetch files, post PR comment |
 | `src/lib/db.ts` | Prisma client (Postgres adapter) |
 | `src/lib/persistAnalysis.ts` | Save analysis, issues, sources; rerun updates |
 | `src/app/api/` | `analyze`, `analysis/[id]`, `analysis/[id]/rerun`, `github/webhook` |
@@ -101,7 +101,8 @@ Copy `.env.example` to `.env` and set at least:
 | Variable | Required | Purpose |
 |----------|----------|---------|
 | `DATABASE_URL` | For persistence | Postgres connection string |
-| `GITHUB_TOKEN` | Only for PR URLs | Read repo contents at the PR head |
+| `GITHUB_TOKEN` | Only for PR URLs | Read repo; also used to post the PR comment |
+| `GITHUB_POST_PR_COMMENT` | No | Default on; set `false` to skip posting a comment |
 | `OPENAI_API_KEY` | No | Second-pass review; omit for rules-only |
 | `OPENAI_MODEL` | No | Defaults to `gpt-4o-mini` |
 | `ENABLE_LLM` | No | Set to `false` to force rules-only even with a key |
@@ -145,7 +146,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 | Method | Path | Notes |
 |--------|------|--------|
-| `POST` | `/api/analyze` | Body: `{ "code" }` and/or `{ "prUrl" }` and/or `{ "files": [...] }` |
-| `GET` | `/api/analysis/:id` | Stored row; needs DB |
+| `POST` | `/api/analyze` | Body: `{ "code" }` and/or `{ "prUrl" }` and/or `{ "files": [...] }`. Response may include `prCommentUrl` for PR runs. |
+| `GET` | `/api/analysis/:id` | Stored row; includes `prCommentUrl` when a comment was posted; needs DB |
 | `POST` | `/api/analysis/:id/rerun` | Re-runs from stored input; needs DB |
 | `POST` | `/api/github/webhook` | Stub; returns 200 |

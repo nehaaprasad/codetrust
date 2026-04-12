@@ -5,6 +5,7 @@ import { useState } from "react";
 
 type AnalyzeResponse = {
   id: string | null;
+  prCommentUrl?: string | null;
   score: number;
   decision: string;
   summary: string;
@@ -169,6 +170,18 @@ function ResultSummary({ data }: { data: AnalyzeResponse }) {
       <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
         {data.summary}
       </p>
+      {data.prCommentUrl ? (
+        <p className="text-sm">
+          <a
+            href={data.prCommentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-emerald-700 underline dark:text-emerald-400"
+          >
+            View comment on GitHub
+          </a>
+        </p>
+      ) : null}
       <ul className="space-y-2">
         {data.issues.slice(0, 12).map((issue, i) => (
           <li
