@@ -13,6 +13,7 @@ type AnalysisPayload = {
   previousDecision: string | null;
   summary: string;
   prCommentUrl: string | null;
+  prCommentId: string | null;
   createdAt: string;
   issues: {
     category: string;

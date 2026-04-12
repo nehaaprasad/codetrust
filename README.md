@@ -2,7 +2,7 @@
 
 Local web app that runs **deterministic checks** on pasted code or a GitHub PR, optionally adds an **OpenAI JSON review pass** when `OPENAI_API_KEY` is set, then combines everything into a **weighted score** and a **ship verdict** (SAFE / RISKY / BLOCK). Results can be stored in Postgres.
 
-Not implemented yet: background job queues (BullMQ/Redis) and GitHub sign-in. For PR URLs, the app can **post a summary comment** on the pull request when `GITHUB_TOKEN` has permission (disable with `GITHUB_POST_PR_COMMENT=false`).
+Not implemented yet: background job queues (BullMQ/Redis) and GitHub sign-in. For PR URLs, the app can **post a summary comment** when `GITHUB_TOKEN` has permission (`GITHUB_POST_PR_COMMENT=false` to disable). **Re-run** updates that same comment when `prCommentId` is stored; if the comment was deleted on GitHub, it creates a new one.
 
 ### Where the backend lives
 
