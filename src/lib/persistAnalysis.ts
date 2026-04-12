@@ -10,7 +10,7 @@ export async function saveAnalysis(
   result: AnalysisResult,
   input: StoredAnalysisInput,
   projectId: string | null,
-  options?: { prCommentUrl?: string | null },
+  options?: { prCommentUrl?: string | null; prCommentId?: string | null },
 ) {
   const prisma = getPrisma();
   const data: Prisma.AnalysisCreateInput = {
@@ -19,6 +19,7 @@ export async function saveAnalysis(
     summary: result.summary,
     modelVersion: result.modelVersion,
     prCommentUrl: options?.prCommentUrl ?? null,
+    prCommentId: options?.prCommentId ?? null,
     inputJson: input as Prisma.InputJsonValue,
     issues: {
       create: result.issues.map((i) => ({
@@ -49,6 +50,7 @@ export async function saveAnalysis(
 export async function updateAnalysisRerun(
   analysisId: string,
   result: AnalysisResult,
+  prComment?: { url: string | null; id: string | null } | null,
 ) {
   const prisma = getPrisma();
   const existing = await prisma.analysis.findUnique({
@@ -68,6 +70,12 @@ export async function updateAnalysisRerun(
       decision: result.decision,
       summary: result.summary,
       modelVersion: result.modelVersion,
+      ...(prComment != null
+        ? {
+            prCommentUrl: prComment.url,
+            prCommentId: prComment.id,
+          }
+        : {}),
       issues: {
         create: result.issues.map((i) => ({
           category: i.category,

@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { analyzeFiles } from "@/lib/analysis/run";
 import type { CodeFile } from "@/lib/analysis/checks";
 import { fetchPrFilesForAnalysis } from "@/lib/github/fetchPrFiles";
+import { parseGithubPrUrl } from "@/lib/github/parsePrUrl";
+import {
+  buildPrCommentBody,
+  createOrUpdatePrComment,
+} from "@/lib/github/postPrComment";
 import { isDatabaseConfigured, getPrisma } from "@/lib/db";
 import {
   updateAnalysisRerun,
@@ -62,13 +67,37 @@ export async function POST(
   }
 
   const result = await analyzeFiles(files);
-  const updated = await updateAnalysisRerun(id, result);
+
+  let prCommentPatch: { url: string | null; id: string | null } | undefined;
+  if (input.kind === "pr") {
+    const shouldPost = process.env.GITHUB_POST_PR_COMMENT !== "false";
+    const token = process.env.GITHUB_TOKEN;
+    const parsed = parseGithubPrUrl(input.prUrl);
+    if (parsed && shouldPost && token) {
+      try {
+        const body = buildPrCommentBody(result);
+        const ref = await createOrUpdatePrComment(
+          token,
+          parsed,
+          body,
+          row.prCommentId,
+        );
+        prCommentPatch = { url: ref.htmlUrl, id: ref.commentId };
+      } catch (e) {
+        console.error("GitHub PR comment on rerun failed:", e);
+      }
+    }
+  }
+
+  const updated = await updateAnalysisRerun(id, result, prCommentPatch);
   if (!updated) {
     return NextResponse.json({ error: "Update failed." }, { status: 500 });
   }
 
   return NextResponse.json({
     id: updated.id,
+    prCommentUrl: updated.prCommentUrl,
+    prCommentId: updated.prCommentId,
     modelVersion: result.modelVersion,
     score: updated.score,
     decision: updated.decision,

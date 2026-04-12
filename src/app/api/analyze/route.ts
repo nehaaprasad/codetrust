@@ -6,7 +6,10 @@ import {
   parseGithubPrUrl,
   type ParsedPrUrl,
 } from "@/lib/github/parsePrUrl";
-import { buildPrCommentBody, postPrComment } from "@/lib/github/postPrComment";
+import {
+  buildPrCommentBody,
+  createOrUpdatePrComment,
+} from "@/lib/github/postPrComment";
 import { isDatabaseConfigured, getPrisma } from "@/lib/db";
 import { saveAnalysis, type StoredAnalysisInput } from "@/lib/persistAnalysis";
 import { analyzeBodySchema } from "@/lib/validation/analyze";
@@ -95,14 +98,21 @@ export async function POST(req: Request) {
   const result = await analyzeFiles(files);
 
   let prCommentUrl: string | null = null;
+  let prCommentId: string | null = null;
   if (parsedPr) {
-    const postComment = process.env.GITHUB_POST_PR_COMMENT !== "false";
+    const shouldPost = process.env.GITHUB_POST_PR_COMMENT !== "false";
     const ghToken = process.env.GITHUB_TOKEN;
-    if (postComment && ghToken) {
+    if (shouldPost && ghToken) {
       try {
         const commentBody = buildPrCommentBody(result);
-        const { htmlUrl } = await postPrComment(ghToken, parsedPr, commentBody);
-        prCommentUrl = htmlUrl;
+        const ref = await createOrUpdatePrComment(
+          ghToken,
+          parsedPr,
+          commentBody,
+          undefined,
+        );
+        prCommentUrl = ref.htmlUrl;
+        prCommentId = ref.commentId;
       } catch (e) {
         console.error("GitHub PR comment failed:", e);
       }
@@ -114,6 +124,7 @@ export async function POST(req: Request) {
     try {
       const row = await saveAnalysis(result, stored, projectId, {
         prCommentUrl,
+        prCommentId,
       });
       id = row.id;
     } catch (e) {
@@ -128,6 +139,7 @@ export async function POST(req: Request) {
   return NextResponse.json({
     id,
     prCommentUrl,
+    prCommentId,
     modelVersion: result.modelVersion,
     score: result.score,
     decision: result.decision,

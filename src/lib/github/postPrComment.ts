@@ -36,9 +36,7 @@ export function buildPrCommentBody(
     lines.push("");
   }
 
-  lines.push(
-    "<!-- ai-code-trust -->",
-  );
+  lines.push("<!-- ai-code-trust -->");
 
   let body = lines.join("\n");
   if (body.length > MAX_BODY) {
@@ -47,20 +45,71 @@ export function buildPrCommentBody(
   return body;
 }
 
-export async function postPrComment(
-  token: string,
+export type PrCommentRef = {
+  htmlUrl: string;
+  commentId: string;
+};
+
+async function createComment(
+  octokit: Octokit,
   parsed: ParsedPrUrl,
   body: string,
-): Promise<{ htmlUrl: string }> {
-  const octokit = new Octokit({ auth: token });
+): Promise<PrCommentRef> {
   const { data } = await octokit.rest.issues.createComment({
     owner: parsed.owner,
     repo: parsed.repo,
     issue_number: parsed.pull_number,
     body,
   });
-  if (!data.html_url) {
-    throw new Error("GitHub did not return a comment URL.");
+  if (data.html_url == null || data.id == null) {
+    throw new Error("GitHub did not return comment url or id.");
   }
-  return { htmlUrl: data.html_url };
+  return { htmlUrl: data.html_url, commentId: String(data.id) };
+}
+
+async function updateComment(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  commentId: string,
+  body: string,
+): Promise<PrCommentRef> {
+  const num = Number(commentId);
+  if (!Number.isFinite(num)) {
+    throw new Error("Invalid stored prCommentId.");
+  }
+  const { data } = await octokit.rest.issues.updateComment({
+    owner,
+    repo,
+    comment_id: num,
+    body,
+  });
+  if (data.html_url == null || data.id == null) {
+    throw new Error("GitHub did not return comment url or id after update.");
+  }
+  return { htmlUrl: data.html_url, commentId: String(data.id) };
+}
+
+/**
+ * Creates a new PR comment, or updates the existing one when `existingCommentId` is set.
+ * If update fails (e.g. comment deleted), falls back to creating a new comment.
+ */
+export async function createOrUpdatePrComment(
+  token: string,
+  parsed: ParsedPrUrl,
+  body: string,
+  existingCommentId: string | null | undefined,
+): Promise<PrCommentRef> {
+  const octokit = new Octokit({ auth: token });
+  const { owner, repo } = parsed;
+
+  if (existingCommentId?.trim()) {
+    try {
+      return await updateComment(octokit, owner, repo, existingCommentId.trim(), body);
+    } catch (e) {
+      console.error("GitHub updateComment failed, creating new comment:", e);
+    }
+  }
+
+  return createComment(octokit, parsed, body);
 }

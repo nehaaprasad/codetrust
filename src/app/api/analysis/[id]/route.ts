@@ -31,6 +31,7 @@ export async function GET(
     previousDecision: row.previousDecision,
     summary: row.summary,
     prCommentUrl: row.prCommentUrl,
+    prCommentId: row.prCommentId,
     modelVersion: row.modelVersion,
     createdAt: row.createdAt.toISOString(),
     issues: row.issues.map((i) => ({
