@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Project {
+  id        String     @id @default(cuid())
+  repoUrl   String     @unique
+  name      String
+  createdAt DateTime   @default(now())
+  analyses  Analysis[]
+}
+
+model Analysis {
+  id               String   @id @default(cuid())
+  projectId        String?
+  project          Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  score            Int
+  decision         String
+  previousScore    Int?
+  previousDecision String?
+  modelVersion     String   @default("deterministic-v1")
+  summary          String
+  inputJson        Json?
+  createdAt        DateTime @default(now())
+  issues           Issue[]
+  sources          Source[]
+}
+
+model Issue {
+  id          String   @id @default(cuid())
+  analysisId  String
+  analysis    Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  category    String
+  severity    String
+  description String
+  filePath    String?
+  lineNumber  Int?
+}
+
+model Source {
+  id          String   @id @default(cuid())
+  analysisId  String
+  analysis    Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  url         String?
+  title       String?
+  excerpt     String?
+  trustLevel  String?
+}
