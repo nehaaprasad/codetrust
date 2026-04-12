@@ -61,7 +61,7 @@ export async function POST(
     return NextResponse.json({ error: "Unknown stored input kind." }, { status: 400 });
   }
 
-  const result = analyzeFiles(files);
+  const result = await analyzeFiles(files);
   const updated = await updateAnalysisRerun(id, result);
   if (!updated) {
     return NextResponse.json({ error: "Update failed." }, { status: 500 });
@@ -69,6 +69,7 @@ export async function POST(
 
   return NextResponse.json({
     id: updated.id,
+    modelVersion: result.modelVersion,
     score: updated.score,
     decision: updated.decision,
     previousScore: updated.previousScore,

@@ -16,7 +16,7 @@ export async function saveAnalysis(
     score: result.score,
     decision: result.decision,
     summary: result.summary,
-    modelVersion: "deterministic-v1",
+    modelVersion: result.modelVersion,
     inputJson: input as Prisma.InputJsonValue,
     issues: {
       create: result.issues.map((i) => ({
@@ -65,6 +65,7 @@ export async function updateAnalysisRerun(
       score: result.score,
       decision: result.decision,
       summary: result.summary,
+      modelVersion: result.modelVersion,
       issues: {
         create: result.issues.map((i) => ({
           category: i.category,

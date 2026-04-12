@@ -85,7 +85,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const result = analyzeFiles(files);
+  const result = await analyzeFiles(files);
 
   let id: string | null = null;
   if (isDatabaseConfigured()) {
@@ -103,6 +103,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     id,
+    modelVersion: result.modelVersion,
     score: result.score,
     decision: result.decision,
     summary: result.summary,
