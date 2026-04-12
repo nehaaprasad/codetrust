@@ -4,6 +4,16 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import { AppNav } from "@/components/app-nav";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { dimensionRowsForDisplay } from "@/lib/analysis/dimensionScoresDisplay";
 
 type AnalysisPayload = {
   id: string;
@@ -12,8 +22,10 @@ type AnalysisPayload = {
   previousScore: number | null;
   previousDecision: string | null;
   summary: string;
+  modelVersion: string;
   prCommentUrl: string | null;
   prCommentId: string | null;
+  dimensionScores: Record<string, number> | null;
   createdAt: string;
   issues: {
     category: string;
@@ -29,6 +41,15 @@ type AnalysisPayload = {
     trustLevel: string | null;
   }[];
 };
+
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-full bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+      <AppNav />
+      {children}
+    </div>
+  );
+}
 
 export default function ResultPage() {
   const params = useParams();
@@ -46,27 +67,35 @@ export default function ResultPage() {
   });
 
   if (!id) {
-    return <p className="p-8 text-sm text-zinc-600">Missing analysis id.</p>;
+    return (
+      <Shell>
+        <p className="p-8 text-sm text-zinc-600">Missing analysis id.</p>
+      </Shell>
+    );
   }
 
   if (q.isPending) {
     return (
-      <div className="flex min-h-full flex-1 items-center justify-center p-8 text-zinc-600">
-        Loading analysis…
-      </div>
+      <Shell>
+        <div className="flex flex-1 items-center justify-center p-8 text-zinc-600">
+          Loading analysis…
+        </div>
+      </Shell>
     );
   }
 
   if (q.isError) {
     return (
-      <div className="mx-auto max-w-2xl space-y-4 p-8">
-        <p className="text-sm text-red-600">
-          {q.error instanceof Error ? q.error.message : "Error"}
-        </p>
-        <Link href="/" className="text-sm font-medium text-emerald-700 underline">
-          Back home
-        </Link>
-      </div>
+      <Shell>
+        <div className="mx-auto max-w-2xl space-y-4 p-8">
+          <p className="text-sm text-red-600">
+            {q.error instanceof Error ? q.error.message : "Error"}
+          </p>
+          <Link href="/" className="text-sm font-medium text-emerald-700 underline">
+            Back home
+          </Link>
+        </div>
+      </Shell>
     );
   }
 
@@ -80,8 +109,10 @@ export default function ResultPage() {
         ? "text-amber-600 dark:text-amber-400"
         : "text-red-600 dark:text-red-400";
 
+  const dimRows = dimensionRowsForDisplay(data.dimensionScores ?? null);
+
   return (
-    <div className="min-h-full bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <Shell>
       <main className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-12">
         <Link
           href="/"
@@ -93,6 +124,9 @@ export default function ResultPage() {
         <header className="space-y-2">
           <p className="text-xs uppercase text-zinc-500">
             {new Date(data.createdAt).toLocaleString()}
+          </p>
+          <p className="text-xs text-zinc-500">
+            Model: <span className="font-mono text-zinc-700 dark:text-zinc-300">{data.modelVersion}</span>
           </p>
           {data.prCommentUrl ? (
             <p className="text-sm">
@@ -128,6 +162,37 @@ export default function ResultPage() {
         <p className="text-base leading-relaxed text-zinc-700 dark:text-zinc-300">
           {data.summary}
         </p>
+
+        {dimRows.length > 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Dimension scores</CardTitle>
+              <CardDescription>
+                0–100 per category (higher is better). Weights: security 30%, logic
+                25%, performance 15%, testing 15%, accessibility 10%, maintainability
+                5%.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {dimRows.map((row) => (
+                  <li
+                    key={row.key}
+                    className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900"
+                  >
+                    <span className="text-zinc-700 dark:text-zinc-300">
+                      {row.label}{" "}
+                      <span className="text-zinc-400">({row.weightPct}%)</span>
+                    </span>
+                    <span className="tabular-nums font-semibold text-zinc-900 dark:text-zinc-100">
+                      {row.score}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        ) : null}
 
         <section>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
@@ -175,7 +240,7 @@ export default function ResultPage() {
 
         <RerunButton analysisId={id} />
       </main>
-    </div>
+    </Shell>
   );
 }
 
@@ -205,14 +270,9 @@ function RerunButton({ analysisId }: { analysisId: string }) {
 
   return (
     <div className="space-y-2">
-      <button
-        type="button"
-        onClick={rerun}
-        disabled={loading}
-        className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-      >
+      <Button type="button" variant="outline" onClick={rerun} disabled={loading}>
         {loading ? "Re-running…" : "Re-run analysis"}
-      </button>
+      </Button>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
     </div>
   );

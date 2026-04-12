@@ -18,6 +18,7 @@ export async function saveAnalysis(
     decision: result.decision,
     summary: result.summary,
     modelVersion: result.modelVersion,
+    dimensionScores: result.dimensionScores as unknown as Prisma.InputJsonValue,
     prCommentUrl: options?.prCommentUrl ?? null,
     prCommentId: options?.prCommentId ?? null,
     inputJson: input as Prisma.InputJsonValue,
@@ -70,6 +71,7 @@ export async function updateAnalysisRerun(
       decision: result.decision,
       summary: result.summary,
       modelVersion: result.modelVersion,
+      dimensionScores: result.dimensionScores as unknown as Prisma.InputJsonValue,
       ...(prComment != null
         ? {
             prCommentUrl: prComment.url,

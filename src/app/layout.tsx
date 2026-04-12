@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { AuthSessionProvider } from "@/providers/session-provider";
 import { QueryProvider } from "@/providers/query-provider";
+import { SetupBanner } from "@/components/setup-banner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -30,7 +32,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <QueryProvider>{children}</QueryProvider>
+        <AuthSessionProvider>
+          <QueryProvider>
+            <SetupBanner />
+            {children}
+          </QueryProvider>
+        </AuthSessionProvider>
       </body>
     </html>
   );

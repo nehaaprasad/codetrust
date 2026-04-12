@@ -27,6 +27,8 @@ model Analysis {
   summary          String
   prCommentUrl     String?
   prCommentId      String?
+  /** Per-dimension scores 0–100 (security, logic, …). */
+  dimensionScores  Json?
   inputJson        Json?
   createdAt        DateTime @default(now())
   issues           Issue[]

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { parseStoredDimensionScores } from "@/lib/analysis/dimensionScoresDisplay";
 import { isDatabaseConfigured, getPrisma } from "@/lib/db";
 
 export async function GET(
@@ -33,6 +34,7 @@ export async function GET(
     prCommentUrl: row.prCommentUrl,
     prCommentId: row.prCommentId,
     modelVersion: row.modelVersion,
+    dimensionScores: parseStoredDimensionScores(row.dimensionScores),
     createdAt: row.createdAt.toISOString(),
     issues: row.issues.map((i) => ({
       category: i.category,

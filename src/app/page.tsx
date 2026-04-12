@@ -2,10 +2,25 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AppNav } from "@/components/app-nav";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { dimensionRowsForDisplay } from "@/lib/analysis/dimensionScoresDisplay";
 
 type AnalyzeResponse = {
   id: string | null;
   prCommentUrl?: string | null;
+  prCommentId?: string | null;
+  async?: boolean;
   score: number;
   decision: string;
   summary: string;
@@ -16,7 +31,48 @@ type AnalyzeResponse = {
     filePath?: string;
     lineNumber?: number | null;
   }[];
+  sources?: Array<{
+    url?: string | null;
+    title?: string | null;
+    excerpt?: string | null;
+    trustLevel?: string | null;
+  }>;
+  dimensionScores?: Record<string, number>;
 };
+
+async function waitForJobResult(jobId: string): Promise<AnalyzeResponse> {
+  const maxAttempts = 180;
+  const delayMs = 1000;
+  for (let i = 0; i < maxAttempts; i += 1) {
+    const res = await fetch(`/api/jobs/${jobId}`);
+    const data = (await res.json()) as {
+      error?: string;
+      state?: string;
+      failedReason?: string | null;
+      result?: AnalyzeResponse | null;
+    };
+    if (!res.ok) {
+      throw new Error(data.error ?? "Could not read job status.");
+    }
+    if (data.state === "completed" && data.result) {
+      return data.result;
+    }
+    if (data.state === "failed") {
+      throw new Error(data.failedReason ?? "Analysis job failed.");
+    }
+    await new Promise((r) => setTimeout(r, delayMs));
+  }
+  throw new Error("Timed out waiting for analysis.");
+}
+
+function verdictBadgeVariant(
+  d: string,
+): "default" | "secondary" | "risky" | "block" {
+  if (d === "SAFE") return "default";
+  if (d === "RISKY") return "risky";
+  if (d === "BLOCK") return "block";
+  return "secondary";
+}
 
 export default function Home() {
   const router = useRouter();
@@ -25,11 +81,13 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [inline, setInline] = useState<AnalyzeResponse | null>(null);
+  const [queueHint, setQueueHint] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setInline(null);
+    setQueueHint(null);
     setLoading(true);
     try {
       const body: Record<string, unknown> = {};
@@ -46,26 +104,47 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = (await res.json()) as AnalyzeResponse & { error?: string };
+      const data = (await res.json()) as AnalyzeResponse & {
+        error?: string;
+        jobId?: string;
+        async?: boolean;
+      };
+
       if (!res.ok) {
         setError(data.error ?? "Analysis failed.");
         setLoading(false);
         return;
       }
+
+      if (res.status === 202 && data.jobId) {
+        setQueueHint("Queued — waiting for worker…");
+        const result = await waitForJobResult(data.jobId);
+        setQueueHint(null);
+        if (result.id) {
+          router.push(`/results/${result.id}`);
+          return;
+        }
+        setInline(result);
+        return;
+      }
+
       if (data.id) {
         router.push(`/results/${data.id}`);
         return;
       }
       setInline(data);
-    } catch {
-      setError("Network error.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Network error.");
     } finally {
       setLoading(false);
+      setQueueHint(null);
     }
   }
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+      <AppNav />
+
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-10 px-6 py-16">
         <header className="space-y-3">
           <p className="text-sm font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
@@ -81,66 +160,77 @@ export default function Home() {
           </p>
         </header>
 
-        <form onSubmit={onSubmit} className="flex flex-col gap-6">
-          <div className="space-y-2">
-            <label htmlFor="prUrl" className="text-sm font-medium">
-              GitHub pull request URL (optional)
-            </label>
-            <input
-              id="prUrl"
-              type="url"
-              name="prUrl"
-              placeholder="https://github.com/owner/repo/pull/123"
-              value={prUrl}
-              onChange={(e) => setPrUrl(e.target.value)}
-              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-2 dark:border-zinc-700 dark:bg-zinc-900"
-            />
-            <p className="text-xs text-zinc-500">
-              Requires{" "}
-              <code className="rounded bg-zinc-200 px-1 py-0.5 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">Run analysis</CardTitle>
+            <CardDescription>
+              PR URLs need{" "}
+              <code className="rounded bg-zinc-100 px-1 py-0.5 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
                 GITHUB_TOKEN
               </code>{" "}
-              on the server. Leave empty to paste code instead.
-            </p>
-          </div>
+              on the server. Leave the PR field empty to paste code.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={onSubmit} className="flex flex-col gap-6">
+              <div className="space-y-2">
+                <label htmlFor="prUrl" className="text-sm font-medium">
+                  GitHub pull request URL (optional)
+                </label>
+                <Input
+                  id="prUrl"
+                  type="url"
+                  name="prUrl"
+                  placeholder="https://github.com/owner/repo/pull/123"
+                  value={prUrl}
+                  onChange={(e) => setPrUrl(e.target.value)}
+                />
+              </div>
 
-          <div className="space-y-2">
-            <label htmlFor="code" className="text-sm font-medium">
-              Or paste code
-            </label>
-            <textarea
-              id="code"
-              name="code"
-              rows={14}
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="// Your code…"
-              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 font-mono text-sm leading-relaxed shadow-sm outline-none ring-emerald-500/30 focus:border-emerald-500 focus:ring-2 dark:border-zinc-700 dark:bg-zinc-900"
-            />
-          </div>
+              <div className="space-y-2">
+                <label htmlFor="code" className="text-sm font-medium">
+                  Or paste code
+                </label>
+                <Textarea
+                  id="code"
+                  name="code"
+                  rows={14}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="// Your code…"
+                  className="font-mono text-sm leading-relaxed"
+                />
+              </div>
 
-          {error ? (
-            <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-              {error}
-            </p>
-          ) : null}
+              {queueHint ? (
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">{queueHint}</p>
+              ) : null}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-5 text-sm font-medium text-white shadow transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading ? "Analyzing…" : "Run analysis"}
-          </button>
-        </form>
+              {error ? (
+                <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+                  {error}
+                </p>
+              ) : null}
+
+              <Button type="submit" disabled={loading} className="w-full sm:w-auto">
+                {loading ? "Analyzing…" : "Run analysis"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
 
         {inline ? (
-          <section className="space-y-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <p className="text-xs font-medium uppercase text-zinc-500">
-              Result (no database — not saved)
-            </p>
-            <ResultSummary data={inline} />
-          </section>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Result</CardTitle>
+              <CardDescription>
+                No database id — this run was not persisted.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResultSummary data={inline} />
+            </CardContent>
+          </Card>
         ) : null}
       </main>
     </div>
@@ -148,12 +238,7 @@ export default function Home() {
 }
 
 function ResultSummary({ data }: { data: AnalyzeResponse }) {
-  const verdictClass =
-    data.decision === "SAFE"
-      ? "text-emerald-600 dark:text-emerald-400"
-      : data.decision === "RISKY"
-        ? "text-amber-600 dark:text-amber-400"
-        : "text-red-600 dark:text-red-400";
+  const dimRows = dimensionRowsForDisplay(data.dimensionScores ?? null);
 
   return (
     <div className="space-y-4">
@@ -164,12 +249,31 @@ function ResultSummary({ data }: { data: AnalyzeResponse }) {
         </div>
         <div>
           <p className="text-xs uppercase text-zinc-500">Verdict</p>
-          <p className={`text-2xl font-semibold ${verdictClass}`}>{data.decision}</p>
+          <p className="pt-1">
+            <Badge variant={verdictBadgeVariant(data.decision)}>
+              {data.decision}
+            </Badge>
+          </p>
         </div>
       </div>
       <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
         {data.summary}
       </p>
+      {dimRows.length > 0 ? (
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {dimRows.map((row) => (
+            <li
+              key={row.key}
+              className="flex justify-between rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-xs dark:border-zinc-800 dark:bg-zinc-950"
+            >
+              <span>
+                {row.label} ({row.weightPct}%)
+              </span>
+              <span className="tabular-nums font-medium">{row.score}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {data.prCommentUrl ? (
         <p className="text-sm">
           <a

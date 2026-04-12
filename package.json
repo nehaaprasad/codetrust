@@ -8,18 +8,29 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "worker": "node --import tsx ./src/worker.ts"
   },
   "dependencies": {
     "@octokit/rest": "^22.0.1",
     "@prisma/client": "^7.7.0",
+    "@radix-ui/react-slot": "^1.2.4",
     "@tanstack/react-query": "^5.99.0",
+    "bullmq": "^5.73.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "dotenv": "^17.4.2",
+    "ioredis": "^5.10.1",
+    "lucide-react": "^1.8.0",
     "next": "16.2.3",
+    "next-auth": "^5.0.0-beta.30",
     "openai": "^6.34.0",
     "pg": "^8.20.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "zod": "^4.3.6"
+    "tailwind-merge": "^3.5.0",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@prisma/adapter-pg": "^7.7.0",
@@ -32,6 +43,7 @@
     "eslint-config-next": "16.2.3",
     "prisma": "^7.7.0",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
