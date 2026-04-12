@@ -1,8 +1,25 @@
 # AI Code Trust
 
-Local web app that runs **static checks** on pasted code or a GitHub PR, combines them into a **weighted score**, and returns a **ship verdict** (SAFE / RISKY / BLOCK). Results can be stored in Postgres.
+Local web app that runs **deterministic checks** on pasted code or a GitHub PR, optionally adds an **OpenAI JSON review pass** when `OPENAI_API_KEY` is set, then combines everything into a **weighted score** and a **ship verdict** (SAFE / RISKY / BLOCK). Results can be stored in Postgres.
 
-The product PDFs in this repo describe the fuller vision (LLM layer, queues, GitHub OAuth, PR comments). This codebase implements the **core pipeline + API + UI**; it does **not** yet include async workers, LLM reasoning, or posting comments back to GitHub.
+Not implemented yet: background job queues, GitHub OAuth, and posting results back to a pull request as a comment.
+
+### Where the backend lives
+
+There is **no separate Fastify service**. The backend is **Next.js on the server**: Route Handlers under `src/app/api/` run on Node, talk to Postgres through Prisma, call GitHub with Octokit, and call OpenAI when configured. One process (`next dev` / `next start`) serves both the UI and the API.
+
+```mermaid
+flowchart TB
+  subgraph api [Next.js server]
+    R[Route handlers /api/*]
+    L[Analysis: rules + optional OpenAI]
+    D[(PostgreSQL)]
+  end
+  R --> L
+  L --> D
+  L -.->|optional| O[OpenAI API]
+  L -.->|PR URLs| G[GitHub API]
+```
 
 ---
 
@@ -36,7 +53,10 @@ Without `DATABASE_URL`, the same handler still returns a full JSON result on the
 ```mermaid
 flowchart TD
   I[Code or PR files] --> C[Deterministic checks]
-  C --> D[Per-dimension scores 0–100]
+  I --> L[Optional OpenAI JSON review]
+  C --> M[Merge issues]
+  L --> M
+  M --> D[Per-dimension scores 0–100]
   D --> W[Weighted average → trust score]
   W --> V{Verdict rules}
   V -->|score ≥ 85, no critical sec| S[SAFE]
@@ -44,7 +64,9 @@ flowchart TD
   V -->|under 60 or critical security| B[BLOCK]
 ```
 
-Weights: security 30%, logic 25%, performance 15%, testing 15%, accessibility 10%, maintainability 5%.
+Weights: security 30%, logic 25%, performance 15%, testing 15%, accessibility 10%, maintainability 5%.  
+If `OPENAI_API_KEY` is missing or `ENABLE_LLM=false`, the OpenAI step is skipped and only rules run.  
+`modelVersion` in responses is `deterministic-v1` or `deterministic+openai-v1`.
 
 ---
 
@@ -52,7 +74,7 @@ Weights: security 30%, logic 25%, performance 15%, testing 15%, accessibility 10
 
 | Path | Role |
 |------|------|
-| `src/lib/analysis/` | Checks, weights, scoring, decision, summary |
+| `src/lib/analysis/` | Checks, LLM enrich (`llmEnrich.ts`), weights, scoring, decision, summary |
 | `src/lib/github/` | Parse PR URL, fetch files via Octokit |
 | `src/lib/db.ts` | Prisma client (Postgres adapter) |
 | `src/lib/persistAnalysis.ts` | Save analysis, issues, sources; rerun updates |
@@ -80,6 +102,9 @@ Copy `.env.example` to `.env` and set at least:
 |----------|----------|---------|
 | `DATABASE_URL` | For persistence | Postgres connection string |
 | `GITHUB_TOKEN` | Only for PR URLs | Read repo contents at the PR head |
+| `OPENAI_API_KEY` | No | Second-pass review; omit for rules-only |
+| `OPENAI_MODEL` | No | Defaults to `gpt-4o-mini` |
+| `ENABLE_LLM` | No | Set to `false` to force rules-only even with a key |
 
 **2. Database**
 
@@ -124,12 +149,3 @@ Open [http://localhost:3000](http://localhost:3000).
 | `GET` | `/api/analysis/:id` | Stored row; needs DB |
 | `POST` | `/api/analysis/:id/rerun` | Re-runs from stored input; needs DB |
 | `POST` | `/api/github/webhook` | Stub; returns 200 |
-
----
-
-## Spec PDFs
-
-- `AI_Code_Trust_Elite_Version.pdf` — product and architecture narrative  
-- `AI_Code_Trust_Implementation_Blueprint.pdf` — API sketch and build order  
-
-Use those when extending the app (LLM pass, BullMQ, GitHub App, etc.).
