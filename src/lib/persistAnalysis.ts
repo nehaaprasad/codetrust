@@ -10,6 +10,7 @@ export async function saveAnalysis(
   result: AnalysisResult,
   input: StoredAnalysisInput,
   projectId: string | null,
+  options?: { prCommentUrl?: string | null },
 ) {
   const prisma = getPrisma();
   const data: Prisma.AnalysisCreateInput = {
@@ -17,6 +18,7 @@ export async function saveAnalysis(
     decision: result.decision,
     summary: result.summary,
     modelVersion: result.modelVersion,
+    prCommentUrl: options?.prCommentUrl ?? null,
     inputJson: input as Prisma.InputJsonValue,
     issues: {
       create: result.issues.map((i) => ({

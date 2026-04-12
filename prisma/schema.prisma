@@ -25,6 +25,7 @@ model Analysis {
   previousDecision String?
   modelVersion     String   @default("deterministic-v1")
   summary          String
+  prCommentUrl     String?
   inputJson        Json?
   createdAt        DateTime @default(now())
   issues           Issue[]
