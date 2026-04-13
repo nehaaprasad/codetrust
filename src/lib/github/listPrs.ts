@@ -1,59 +1,58 @@
-import { createGitHubClient, createGitHubClientForUser } from "./client";
+import { createGitHubClientForUser } from "./client";
 import type { GitHubPullRequest } from "./types";
 
-const MAX_PRS = 30;
+const MAX_PRS = 50;
+
+/** Explains where we ran `pulls.list` (forks list PRs on upstream). */
+export type PrListSource = {
+  selectedFullName: string;
+  listingFullName: string;
+  forkResolvedToUpstream: boolean;
+};
 
 /**
  * Fetch pull requests from a repository.
- * Uses the user's OAuth token when `accessToken` is set; otherwise the server PAT.
+ * If the repo is a **fork**, we list PRs on the **upstream** parent — that is where
+ * open-source PRs usually live; the fork itself often has zero PRs.
  */
 export async function fetchRepoPullRequests(
   owner: string,
   repo: string,
-  options?: {
-    accessToken?: string;
+  options: {
+    accessToken: string;
     state?: "open" | "closed" | "all";
     sort?: "created" | "updated" | "popularity" | "long-running";
     direction?: "asc" | "desc";
+  },
+): Promise<{ prs: GitHubPullRequest[]; prSource: PrListSource }> {
+  const octokit = createGitHubClientForUser(options.accessToken);
+  const selectedFullName = `${owner}/${repo}`;
+
+  const { data: repoInfo } = await octokit.repos.get({ owner, repo });
+
+  let listOwner = owner;
+  let listRepo = repo;
+  let forkResolvedToUpstream = false;
+
+  if (repoInfo.fork && repoInfo.parent) {
+    listOwner = repoInfo.parent.owner.login;
+    listRepo = repoInfo.parent.name;
+    forkResolvedToUpstream = true;
   }
-): Promise<GitHubPullRequest[]> {
-  const octokit = options?.accessToken
-    ? createGitHubClientForUser(options.accessToken)
-    : createGitHubClient();
 
   const { data: prs } = await octokit.pulls.list({
-    owner,
-    repo,
-    state: options?.state ?? "all",
-    sort: options?.sort ?? "updated",
-    direction: options?.direction ?? "desc",
+    owner: listOwner,
+    repo: listRepo,
+    state: options.state ?? "open",
+    sort: options.sort ?? "updated",
+    direction: options.direction ?? "desc",
     per_page: MAX_PRS,
   });
 
-  const result: GitHubPullRequest[] = [];
+  const listingFullName = `${listOwner}/${listRepo}`;
 
-  for (const pr of prs) {
-    // Get file stats for each PR (additions, deletions, changed files)
-    let stats = { additions: 0, deletions: 0, changedFiles: 0 };
-
-    try {
-      const { data: files } = await octokit.pulls.listFiles({
-        owner,
-        repo,
-        pull_number: pr.number,
-        per_page: 1,
-      });
-      // Use the listsReturnsCount header for changed files count
-      stats = {
-        additions: files.reduce((sum, f) => sum + f.additions, 0),
-        deletions: files.reduce((sum, f) => sum + f.deletions, 0),
-        changedFiles: files.length,
-      };
-    } catch {
-      // Ignore errors getting stats
-    }
-
-    result.push({
+  return {
+    prs: prs.map((pr) => ({
       id: pr.id,
       number: pr.number,
       title: pr.title ?? "",
@@ -74,11 +73,14 @@ export async function fetchRepoPullRequests(
         ref: pr.base.ref,
         sha: pr.base.sha,
       },
-      changedFiles: stats.changedFiles,
-      additions: stats.additions,
-      deletions: stats.deletions,
-    });
-  }
-
-  return result;
+      changedFiles: 0,
+      additions: 0,
+      deletions: 0,
+    })),
+    prSource: {
+      selectedFullName,
+      listingFullName,
+      forkResolvedToUpstream,
+    },
+  };
 }
