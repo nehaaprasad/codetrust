@@ -41,8 +41,30 @@ model Project {
   analyses  Analysis[]
 }
 
+/** Programmatic access: hashed keys, scoped to OAuth user id (GitHub `sub`). */
+model ApiKey {
+  id         String     @id @default(cuid())
+  userId     String
+  name       String
+  /** SHA-256 hex of full secret (never store plaintext). */
+  keyHash    String     @unique
+  /** Short label e.g. act_abcd… for UI. */
+  prefix     String
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime   @default(now())
+
+  analyses Analysis[]
+
+  @@index([userId])
+}
+
 model Analysis {
   id               String     @id @default(cuid())
+  /** Set when the run was started by a signed-in user (browser or valid API key). */
+  userId           String?
+  apiKeyId         String?
+  apiKey           ApiKey?    @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
   workspaceId      String?
   workspace        Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
   projectId        String?
@@ -70,6 +92,8 @@ model Analysis {
   @@index([repoUrl])
   @@index([projectId])
   @@index([workspaceId])
+  @@index([userId])
+  @@index([apiKeyId])
 }
 
 model Issue {
