@@ -1,4 +1,5 @@
 import { getToken } from "next-auth/jwt";
+import { headers } from "next/headers";
 import type { NextRequest } from "next/server";
 
 function authSecret(): string {
@@ -11,7 +12,22 @@ function authSecret(): string {
 export async function getGitHubAccessTokenFromRequest(
   req: NextRequest,
 ): Promise<string | null> {
-  const token = await getToken({ req, secret: authSecret() });
-  const t = token?.githubAccessToken;
-  return typeof t === "string" ? t : null;
+  let token = await getToken({ req, secret: authSecret() });
+  let t = token?.githubAccessToken;
+  if (typeof t === "string") return t;
+
+  /** App Router: cookie on `headers()` can be more reliable than `req` alone. */
+  try {
+    const h = await headers();
+    const cookie = h.get("cookie");
+    if (!cookie) return null;
+    token = await getToken({
+      req: new Request(req.url, { headers: { cookie } }),
+      secret: authSecret(),
+    });
+    t = token?.githubAccessToken;
+    return typeof t === "string" ? t : null;
+  } catch {
+    return null;
+  }
 }
