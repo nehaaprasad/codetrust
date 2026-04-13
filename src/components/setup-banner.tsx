@@ -100,17 +100,17 @@ export function SetupBanner() {
   if (q.data.redis === "missing" && !q.data.asyncAnalysis) {
     return (
       <div
-        className="border-b border-sky-200 bg-sky-50 px-4 py-2.5 text-sm text-sky-950 dark:border-sky-900/50 dark:bg-sky-950/30 dark:text-sky-100"
+        className="border-b border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm text-zinc-900 dark:border-zinc-700/80 dark:bg-zinc-900/50 dark:text-zinc-200"
         role="status"
       >
         <p className="mx-auto max-w-5xl">
           <strong className="font-semibold">Optional — Redis not configured.</strong>{" "}
           Set{" "}
-          <code className="rounded bg-sky-100/80 px-1 py-0.5 font-mono text-xs dark:bg-sky-900/80">
+          <code className="rounded bg-zinc-200/80 px-1 py-0.5 font-mono text-xs dark:bg-zinc-800/90">
             REDIS_URL
           </code>{" "}
           and run{" "}
-          <code className="rounded bg-sky-100/80 px-1 py-0.5 font-mono text-xs dark:bg-sky-900/80">
+          <code className="rounded bg-zinc-200/80 px-1 py-0.5 font-mono text-xs dark:bg-zinc-800/90">
             npm run worker
           </code>{" "}
           for async analysis queues and GitHub webhook-triggered runs.
