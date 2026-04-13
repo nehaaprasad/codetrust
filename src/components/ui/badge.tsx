@@ -3,12 +3,12 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500/40 dark:focus:ring-sky-400/35",
+  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-400/35 dark:focus:ring-zinc-500/40",
   {
     variants: {
       variant: {
         default:
-          "border-sky-200 bg-sky-600 text-white shadow-sm shadow-sky-900/10 hover:bg-sky-700 dark:border-sky-400/35 dark:bg-sky-500/20 dark:text-sky-50 dark:shadow-[0_0_28px_-6px_rgba(56,189,248,0.55)] dark:hover:bg-sky-400/25",
+          "border-zinc-300 bg-zinc-900 text-white shadow-sm hover:bg-zinc-800 dark:border-zinc-500/50 dark:bg-zinc-100 dark:text-zinc-950 dark:shadow-none dark:hover:bg-zinc-200",
         secondary:
           "border-zinc-200 bg-zinc-100 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-100",
         risky:
