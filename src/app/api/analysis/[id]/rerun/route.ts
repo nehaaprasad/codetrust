@@ -66,7 +66,9 @@ export async function POST(
     return NextResponse.json({ error: "Unknown stored input kind." }, { status: 400 });
   }
 
-  const result = await analyzeFiles(files);
+  const result = await analyzeFiles(files, {
+    workspaceId: row.workspaceId,
+  });
 
   let prCommentPatch: { url: string | null; id: string | null } | undefined;
   if (input.kind === "pr") {

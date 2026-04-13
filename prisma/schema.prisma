@@ -7,6 +7,32 @@ datasource db {
   provider = "postgresql"
 }
 
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members            WorkspaceMember[]
+  analyses           Analysis[]
+  customRules        CustomRule[]
+  auditLogs          AuditLog[]
+  developerWebhooks  DeveloperWebhook[]
+}
+
+model WorkspaceMember {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  role        String    @default("member")
+  createdAt   DateTime  @default(now())
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
 model Project {
   id        String     @id @default(cuid())
   repoUrl   String     @unique
@@ -16,9 +42,16 @@ model Project {
 }
 
 model Analysis {
-  id               String   @id @default(cuid())
+  id               String     @id @default(cuid())
+  workspaceId      String?
+  workspace        Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
   projectId        String?
-  project          Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  project          Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  /** Canonical repo URL (e.g. https://github.com/o/r). Null for paste-only runs. */
+  repoUrl          String?
+  /** Full PR URL when analysis was for a pull request. */
+  prUrl            String?
+  prNumber         Int?
   score            Int
   decision         String
   previousScore    Int?
@@ -33,6 +66,10 @@ model Analysis {
   createdAt        DateTime @default(now())
   issues           Issue[]
   sources          Source[]
+
+  @@index([repoUrl])
+  @@index([projectId])
+  @@index([workspaceId])
 }
 
 model Issue {
@@ -54,4 +91,47 @@ model Source {
   title       String?
   excerpt     String?
   trustLevel  String?
+}
+
+/** User-defined pattern checks (simple substring or regex when pattern is /.../). */
+model CustomRule {
+  id          String     @id @default(cuid())
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  pattern     String
+  category    String
+  severity    String
+  enabled     Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([workspaceId])
+}
+
+model AuditLog {
+  id          String     @id @default(cuid())
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  actorUserId String?
+  action      String
+  meta        Json?
+  createdAt   DateTime   @default(now())
+
+  @@index([createdAt])
+  @@index([workspaceId])
+}
+
+/** Outbound HTTPS webhooks for analysis completion (user-defined URL). */
+model DeveloperWebhook {
+  id          String     @id @default(cuid())
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  url         String
+  secret      String?
+  enabled     Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([workspaceId])
 }

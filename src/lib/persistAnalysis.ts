@@ -10,7 +10,14 @@ export async function saveAnalysis(
   result: AnalysisResult,
   input: StoredAnalysisInput,
   projectId: string | null,
-  options?: { prCommentUrl?: string | null; prCommentId?: string | null },
+  options?: {
+    prCommentUrl?: string | null;
+    prCommentId?: string | null;
+    repoUrl?: string | null;
+    prUrl?: string | null;
+    prNumber?: number | null;
+    workspaceId?: string | null;
+  },
 ) {
   const prisma = getPrisma();
   const data: Prisma.AnalysisCreateInput = {
@@ -19,6 +26,9 @@ export async function saveAnalysis(
     summary: result.summary,
     modelVersion: result.modelVersion,
     dimensionScores: result.dimensionScores as unknown as Prisma.InputJsonValue,
+    repoUrl: options?.repoUrl ?? null,
+    prUrl: options?.prUrl ?? null,
+    prNumber: options?.prNumber ?? null,
     prCommentUrl: options?.prCommentUrl ?? null,
     prCommentId: options?.prCommentId ?? null,
     inputJson: input as Prisma.InputJsonValue,
@@ -43,6 +53,10 @@ export async function saveAnalysis(
 
   if (projectId) {
     data.project = { connect: { id: projectId } };
+  }
+
+  if (options?.workspaceId) {
+    data.workspace = { connect: { id: options.workspaceId } };
   }
 
   return prisma.analysis.create({ data });

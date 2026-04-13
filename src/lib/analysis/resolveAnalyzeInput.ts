@@ -1,5 +1,6 @@
 import type { CodeFile } from "@/lib/analysis/checks";
 import { fetchPrFilesForAnalysis } from "@/lib/github/fetchPrFiles";
+import { canonicalRepoUrl } from "@/lib/github/repoUrl";
 import { parseGithubPrUrl, type ParsedPrUrl } from "@/lib/github/parsePrUrl";
 import { isDatabaseConfigured, getPrisma } from "@/lib/db";
 import type { StoredAnalysisInput } from "@/lib/persistAnalysis";
@@ -10,6 +11,7 @@ export type PreparedAnalyzeInput = {
   stored: StoredAnalysisInput;
   projectId: string | null;
   parsedPr: ParsedPrUrl | null;
+  workspaceId: string | null;
 };
 
 /**
@@ -32,9 +34,10 @@ export async function resolveAnalyzeInput(
     let projectId: string | null = null;
     if (isDatabaseConfigured()) {
       const prisma = getPrisma();
+      const repoKey = canonicalRepoUrl(pr.repoUrl);
       const project = await prisma.project.upsert({
-        where: { repoUrl: pr.repoUrl },
-        create: { repoUrl: pr.repoUrl, name: pr.title },
+        where: { repoUrl: repoKey },
+        create: { repoUrl: repoKey, name: pr.title },
         update: { name: pr.title },
       });
       projectId = project.id;
@@ -44,6 +47,7 @@ export async function resolveAnalyzeInput(
       stored: { kind: "pr", prUrl: url },
       projectId,
       parsedPr: parsed,
+      workspaceId: body.workspaceId ?? null,
     };
   }
 
@@ -56,6 +60,7 @@ export async function resolveAnalyzeInput(
       },
       projectId: null,
       parsedPr: null,
+      workspaceId: body.workspaceId ?? null,
     };
   }
 
@@ -69,6 +74,7 @@ export async function resolveAnalyzeInput(
       },
       projectId: null,
       parsedPr: null,
+      workspaceId: body.workspaceId ?? null,
     };
   }
 

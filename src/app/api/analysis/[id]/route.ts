@@ -26,6 +26,11 @@ export async function GET(
 
   return NextResponse.json({
     id: row.id,
+    workspaceId: row.workspaceId,
+    projectId: row.projectId,
+    repoUrl: row.repoUrl,
+    prUrl: row.prUrl,
+    prNumber: row.prNumber,
     score: row.score,
     decision: row.decision,
     previousScore: row.previousScore,

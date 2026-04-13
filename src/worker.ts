@@ -11,7 +11,7 @@ const connection = createRedisConnection();
 const worker = new Worker<AnalyzeJobData>(
   QUEUE_NAME,
   async (job) => {
-    return processAnalyzeJob(job.data);
+    return processAnalyzeJob(job);
   },
   {
     connection,

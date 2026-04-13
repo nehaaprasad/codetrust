@@ -4,7 +4,12 @@ import {
   createOrUpdatePrComment,
 } from "@/lib/github/postPrComment";
 import { isDatabaseConfigured } from "@/lib/db";
+import { canonicalRepoUrl } from "@/lib/github/repoUrl";
+import { repoUrlFromParsed } from "@/lib/github/parsePrUrl";
+import { logAudit } from "@/lib/auditLog";
 import { saveAnalysis } from "@/lib/persistAnalysis";
+import type { ProgressJob } from "@/lib/queue/jobProgressApi";
+import { deliverAnalysisWebhooks } from "@/lib/webhooks/deliverAnalysis";
 import type { PreparedAnalyzeInput } from "./resolveAnalyzeInput";
 
 export type AnalyzePipelineJson = {
@@ -33,10 +38,16 @@ export type AnalyzePipelineJson = {
 
 export async function runPreparedAnalyze(
   input: PreparedAnalyzeInput,
+  job?: ProgressJob,
 ): Promise<AnalyzePipelineJson> {
-  const { files, stored, projectId, parsedPr } = input;
+  const { files, stored, projectId, parsedPr, workspaceId } = input;
 
-  const result = await analyzeFiles(files);
+  await job?.updateProgress({ stage: "analyzing" });
+  const result = await analyzeFiles(files, { workspaceId: workspaceId ?? null });
+
+  await job?.updateProgress({ stage: "scoring" });
+
+  await job?.updateProgress({ stage: "persisting" });
 
   let prCommentUrl: string | null = null;
   let prCommentId: string | null = null;
@@ -62,12 +73,50 @@ export async function runPreparedAnalyze(
 
   let id: string | null = null;
   if (isDatabaseConfigured()) {
+    const prMeta =
+      parsedPr && stored.kind === "pr"
+        ? {
+            repoUrl: canonicalRepoUrl(repoUrlFromParsed(parsedPr)),
+            prUrl: stored.prUrl.trim(),
+            prNumber: parsedPr.pull_number,
+          }
+        : {
+            repoUrl: null as string | null,
+            prUrl: null as string | null,
+            prNumber: null as number | null,
+          };
+
     const row = await saveAnalysis(result, stored, projectId, {
       prCommentUrl,
       prCommentId,
+      workspaceId: workspaceId ?? null,
+      ...prMeta,
     });
     id = row.id;
   }
+
+  if (id) {
+    await logAudit({
+      action: "analysis.completed",
+      workspaceId: workspaceId ?? null,
+      meta: { analysisId: id, decision: result.decision, score: result.score },
+    });
+    void deliverAnalysisWebhooks({
+      analysisId: id,
+      workspaceId: workspaceId ?? null,
+      result,
+      repoMeta:
+        parsedPr && stored.kind === "pr"
+          ? {
+              repoUrl: canonicalRepoUrl(repoUrlFromParsed(parsedPr)),
+              prUrl: stored.prUrl.trim(),
+              prNumber: parsedPr.pull_number,
+            }
+          : null,
+    }).catch((e) => console.error("developer webhooks:", e));
+  }
+
+  await job?.updateProgress({ stage: "complete" });
 
   return {
     id,

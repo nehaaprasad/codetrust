@@ -27,6 +27,9 @@ import {
 
 type Row = {
   id: string;
+  repoUrl: string | null;
+  prUrl: string | null;
+  prNumber: number | null;
   score: number;
   decision: string;
   summary: string;
@@ -156,6 +159,7 @@ export default function DashboardPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>When</TableHead>
+                    <TableHead>Repo / PR</TableHead>
                     <TableHead>Score</TableHead>
                     <TableHead>Verdict</TableHead>
                     <TableHead className="max-w-md">Summary</TableHead>
@@ -167,6 +171,12 @@ export default function DashboardPage() {
                     <TableRow key={row.id}>
                       <TableCell className="whitespace-nowrap text-zinc-600 dark:text-zinc-400">
                         {new Date(row.createdAt).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="max-w-[180px] truncate text-xs text-zinc-600 dark:text-zinc-400">
+                        {row.repoUrl
+                          ? row.repoUrl.replace(/^https:\/\/github\.com\//, "")
+                          : "—"}
+                        {row.prNumber != null ? ` · #${row.prNumber}` : ""}
                       </TableCell>
                       <TableCell className="tabular-nums font-medium">
                         {row.score}

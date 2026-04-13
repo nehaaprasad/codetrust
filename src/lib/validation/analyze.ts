@@ -10,6 +10,8 @@ export const analyzeBodySchema = z
     code: z.string().max(500_000).optional(),
     prUrl: z.string().max(2048).optional(),
     files: z.array(fileSchema).max(200).optional(),
+    /** Optional workspace scope for history, rules, and webhooks. */
+    workspaceId: z.string().cuid().optional(),
   })
   .superRefine((data, ctx) => {
     const hasCode = Boolean(data.code?.trim());

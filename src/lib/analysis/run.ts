@@ -1,3 +1,5 @@
+import { applyCustomRules } from "./customRulesApply";
+import { loadEnabledCustomRules } from "./customRulesDb";
 import { runDeterministicChecks, type CodeFile } from "./checks";
 import { decisionFromScore } from "./decision";
 import { fetchLlmReview, mergeIssues } from "./llmEnrich";
@@ -18,15 +20,20 @@ export type AnalysisResult = {
   dimensionScores: ReturnType<typeof dimensionScoresFromIssues>;
 };
 
-export async function analyzeFiles(files: CodeFile[]): Promise<AnalysisResult> {
+export async function analyzeFiles(
+  files: CodeFile[],
+  options?: { workspaceId?: string | null },
+): Promise<AnalysisResult> {
+  const customRules = await loadEnabledCustomRules(options?.workspaceId);
+  const customIssues = applyCustomRules(files, customRules);
   const deterministic = runDeterministicChecks(files);
-  let merged = deterministic;
+  let merged = mergeIssues(deterministic, customIssues);
   let summaryNote: string | undefined;
   let usedLlm = false;
 
   const llm = await fetchLlmReview(files);
   if (llm) {
-    merged = mergeIssues(deterministic, llm.issues);
+    merged = mergeIssues(merged, llm.issues);
     if (llm.summaryNote?.trim()) summaryNote = llm.summaryNote;
     usedLlm = true;
   }
@@ -55,6 +62,14 @@ export async function analyzeFiles(files: CodeFile[]): Promise<AnalysisResult> {
   }
 
   const modelVersion = usedLlm ? "deterministic+openai-v1" : "deterministic-v1";
+
+  if (customRules.length > 0) {
+    sources.push({
+      title: "Custom rules",
+      excerpt: `${customRules.length} enabled rule(s).`,
+      trustLevel: "medium",
+    });
+  }
 
   return {
     modelVersion,

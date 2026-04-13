@@ -40,7 +40,10 @@ type AnalyzeResponse = {
   dimensionScores?: Record<string, number>;
 };
 
-async function waitForJobResult(jobId: string): Promise<AnalyzeResponse> {
+async function waitForJobResult(
+  jobId: string,
+  onProgress?: (label: string) => void,
+): Promise<AnalyzeResponse> {
   const maxAttempts = 180;
   const delayMs = 1000;
   for (let i = 0; i < maxAttempts; i += 1) {
@@ -50,9 +53,13 @@ async function waitForJobResult(jobId: string): Promise<AnalyzeResponse> {
       state?: string;
       failedReason?: string | null;
       result?: AnalyzeResponse | null;
+      progressLabel?: string;
     };
     if (!res.ok) {
       throw new Error(data.error ?? "Could not read job status.");
+    }
+    if (data.progressLabel) {
+      onProgress?.(data.progressLabel);
     }
     if (data.state === "completed" && data.result) {
       return data.result;
@@ -117,8 +124,10 @@ export default function Home() {
       }
 
       if (res.status === 202 && data.jobId) {
-        setQueueHint("Queued — waiting for worker…");
-        const result = await waitForJobResult(data.jobId);
+        setQueueHint("Queued…");
+        const result = await waitForJobResult(data.jobId, (label) => {
+          setQueueHint(`${label}…`);
+        });
         setQueueHint(null);
         if (result.id) {
           router.push(`/results/${result.id}`);

@@ -4,7 +4,9 @@ import { resolveAnalyzeInput } from "@/lib/analysis/resolveAnalyzeInput";
 import { addAnalyzeJob } from "@/lib/queue/analyzeQueue";
 import { analyzeBodyToJobData } from "@/lib/queue/jobTypes";
 import { isAsyncAnalysisEnabled } from "@/lib/queue/redisConnection";
+import { checkRateLimit, clientIpFromRequest } from "@/lib/rateLimit";
 import { analyzeBodySchema } from "@/lib/validation/analyze";
+import { assertWorkspaceMember } from "@/lib/workspaceAuth";
 
 const MAX_TOTAL_BYTES = 1_500_000;
 
@@ -26,6 +28,19 @@ function httpStatusForError(message: string): number {
 }
 
 export async function POST(req: Request) {
+  const ip = clientIpFromRequest(req);
+  const rl = checkRateLimit(`analyze:${ip}`);
+  if (!rl.ok) {
+    return NextResponse.json(
+      {
+        error: "Rate limit exceeded. Try again later.",
+        limit: rl.limit,
+        windowMs: rl.windowMs,
+      },
+      { status: 429 },
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -40,6 +55,16 @@ export async function POST(req: Request) {
   }
 
   const data = parsed.data;
+
+  if (data.workspaceId) {
+    const ws = await assertWorkspaceMember(data.workspaceId);
+    if (!ws.ok) {
+      return NextResponse.json(
+        { error: ws.message },
+        { status: ws.status },
+      );
+    }
+  }
 
   if (isAsyncAnalysisEnabled()) {
     const jobData = analyzeBodyToJobData(data);

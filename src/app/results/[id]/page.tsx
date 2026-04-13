@@ -17,6 +17,10 @@ import { dimensionRowsForDisplay } from "@/lib/analysis/dimensionScoresDisplay";
 
 type AnalysisPayload = {
   id: string;
+  projectId: string | null;
+  repoUrl: string | null;
+  prUrl: string | null;
+  prNumber: number | null;
   score: number;
   decision: string;
   previousScore: number | null;
@@ -41,6 +45,97 @@ type AnalysisPayload = {
     trustLevel: string | null;
   }[];
 };
+
+type HistoryRow = {
+  id: string;
+  score: number;
+  decision: string;
+  prNumber: number | null;
+  createdAt: string;
+};
+
+function SameRepoHistory({
+  repoUrl,
+  currentId,
+}: {
+  repoUrl: string;
+  currentId: string;
+}) {
+  const q = useQuery({
+    queryKey: ["analyses", "repo", repoUrl],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        repoUrl,
+        limit: "30",
+      });
+      const res = await fetch(`/api/analyses?${params.toString()}`);
+      const data = (await res.json()) as { items?: HistoryRow[]; error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Failed to load history.");
+      return data.items ?? [];
+    },
+  });
+
+  if (q.isPending) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">History for this repository</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-zinc-500">Loading…</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (q.isError || !q.data?.length) {
+    return null;
+  }
+
+  const others = q.data.filter((row) => row.id !== currentId);
+  if (others.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">History for this repository</CardTitle>
+          <CardDescription>This is the first saved analysis for this repo.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Previous analyses for this repository</CardTitle>
+        <CardDescription>
+          Other runs targeting the same GitHub repo (newest first).
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ul className="space-y-2 text-sm">
+          {others.map((row) => (
+            <li
+              key={row.id}
+              className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 pb-2 last:border-0 dark:border-zinc-800"
+            >
+              <Link
+                href={`/results/${row.id}`}
+                className="font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+              >
+                {new Date(row.createdAt).toLocaleString()}
+                {row.prNumber != null ? ` · PR #${row.prNumber}` : ""}
+              </Link>
+              <span className="text-zinc-600 dark:text-zinc-400">
+                {row.score} · {row.decision}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -157,7 +252,38 @@ export default function ResultPage() {
               Previous run: {data.previousScore} ({data.previousDecision})
             </p>
           ) : null}
+          {data.repoUrl ? (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Repository:{" "}
+              <a
+                href={data.repoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-emerald-700 underline dark:text-emerald-400"
+              >
+                {data.repoUrl.replace(/^https:\/\/github\.com\//, "")}
+              </a>
+              {data.prUrl != null && data.prNumber != null ? (
+                <>
+                  {" "}
+                  ·{" "}
+                  <a
+                    href={data.prUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-emerald-700 underline dark:text-emerald-400"
+                  >
+                    PR #{data.prNumber}
+                  </a>
+                </>
+              ) : null}
+            </p>
+          ) : null}
         </header>
+
+        {data.repoUrl ? (
+          <SameRepoHistory repoUrl={data.repoUrl} currentId={data.id} />
+        ) : null}
 
         <p className="text-base leading-relaxed text-zinc-700 dark:text-zinc-300">
           {data.summary}

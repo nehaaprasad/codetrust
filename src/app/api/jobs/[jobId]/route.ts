@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { getAnalyzeQueue } from "@/lib/queue/analyzeQueue";
 import type { AnalyzePipelineJson } from "@/lib/analysis/runPreparedAnalyze";
+import { formatJobProgress } from "@/lib/queue/jobProgress";
+import { getAnalyzeQueue } from "@/lib/queue/analyzeQueue";
 
 export async function GET(
   _req: Request,
@@ -21,11 +22,15 @@ export async function GET(
     const state = await job.getState();
     const failedReason = job.failedReason ?? null;
     const returnvalue = job.returnvalue as AnalyzePipelineJson | undefined;
+    const progress = formatJobProgress(job.progress, state);
 
     return NextResponse.json({
       jobId: job.id,
       state,
       failedReason,
+      progress: job.progress ?? null,
+      progressLabel: progress.label,
+      progressStage: progress.stage,
       result: state === "completed" ? (returnvalue ?? null) : null,
     });
   } catch (e) {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { canonicalRepoUrl } from "@/lib/github/repoUrl";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
 
 const MAX_LIMIT = 100;
@@ -14,6 +15,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const limitRaw = url.searchParams.get("limit");
   const decision = url.searchParams.get("decision")?.trim();
+  const repoUrlParam = url.searchParams.get("repoUrl")?.trim();
 
   let limit = 30;
   if (limitRaw) {
@@ -32,14 +34,27 @@ export async function GET(req: Request) {
     );
   }
 
+  const where: {
+    decision?: string;
+    repoUrl?: string;
+  } = {};
+  if (decision) where.decision = decision;
+  if (repoUrlParam) {
+    where.repoUrl = canonicalRepoUrl(repoUrlParam);
+  }
+
   try {
     const prisma = getPrisma();
     const items = await prisma.analysis.findMany({
-      where: decision ? { decision } : undefined,
+      where: Object.keys(where).length > 0 ? where : undefined,
       orderBy: { createdAt: "desc" },
       take: limit,
       select: {
         id: true,
+        projectId: true,
+        repoUrl: true,
+        prUrl: true,
+        prNumber: true,
         score: true,
         decision: true,
         summary: true,
