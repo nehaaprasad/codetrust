@@ -38,7 +38,7 @@ type IssueData = {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="flex h-[calc(100vh-4rem)] flex-col bg-zinc-50 text-zinc-900 dark:bg-transparent dark:text-zinc-100">
       <AppNav />
       {children}
     </div>
@@ -99,7 +99,7 @@ export default function DiffPage() {
           <p className="text-sm text-red-600">
             {diffQ.error instanceof Error ? diffQ.error.message : "Error"}
           </p>
-          <Link href={`/results/${id}`} className="text-sm font-medium text-emerald-700 underline">
+          <Link href={`/results/${id}`} className="text-sm font-medium text-sky-700 underline dark:text-sky-400">
             Back to results
           </Link>
         </div>
@@ -116,13 +116,13 @@ export default function DiffPage() {
         <header className="mb-4 flex items-center gap-4">
           <Link
             href={`/results/${id}`}
-            className="text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+            className="text-sm font-medium text-sky-700 hover:underline dark:text-sky-400"
           >
             ← Back to results
           </Link>
           <span className="h-4 w-px bg-zinc-300 dark:bg-zinc-700" />
           <div className="text-sm text-zinc-600 dark:text-zinc-400">
-            <span className="text-green-600 dark:text-green-400">
+            <span className="text-sky-600 dark:text-sky-400">
               +{diff.totalAdditions}
             </span>
             {" "}
@@ -134,7 +134,7 @@ export default function DiffPage() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex-1 overflow-hidden rounded-xl border border-zinc-200/90 bg-white/95 shadow-lg shadow-zinc-900/5 backdrop-blur-sm dark:border-zinc-700/60 dark:bg-zinc-950/50 dark:shadow-[0_0_0_1px_rgba(63,63,70,0.4),0_24px_64px_-28px_rgba(0,0,0,0.55)]">
           {diff.files.length > 0 ? (
             <DiffViewer files={diff.files} issues={issues} />
           ) : (
