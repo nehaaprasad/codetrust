@@ -15,5 +15,8 @@ export async function processAnalyzeJob(job: Job<AnalyzeJobData>) {
   if (total > MAX_TOTAL_BYTES) {
     throw new Error("Combined source exceeds size limit.");
   }
-  return runPreparedAnalyze(prepared, job);
+  return runPreparedAnalyze(prepared, job, {
+    userId: job.data.userId ?? null,
+    apiKeyId: job.data.apiKeyId ?? null,
+  });
 }
