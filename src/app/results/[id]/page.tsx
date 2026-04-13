@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { IssueDetailList } from "@/components/issue-detail-list";
 import { dimensionRowsForDisplay } from "@/lib/analysis/dimensionScoresDisplay";
 
 type AnalysisPayload = {
@@ -350,27 +351,12 @@ export default function ResultPage() {
 
         <section>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-            Top issues
+            Issues
           </h2>
-          <ul className="space-y-2">
-            {data.issues.map((issue, i) => (
-              <li
-                key={`${issue.message}-${i}`}
-                className="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-              >
-                <div className="font-medium text-zinc-900 dark:text-zinc-100">
-                  [{issue.category}] {issue.severity}
-                </div>
-                <p className="mt-1 text-zinc-700 dark:text-zinc-300">{issue.message}</p>
-                {issue.filePath ? (
-                  <p className="mt-1 font-mono text-xs text-zinc-500">
-                    {issue.filePath}
-                    {issue.lineNumber != null ? `:${issue.lineNumber}` : ""}
-                  </p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+          <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+            Expand each row for why it matters and where it was detected.
+          </p>
+          <IssueDetailList issues={data.issues} />
         </section>
 
         {data.sources.length > 0 ? (
