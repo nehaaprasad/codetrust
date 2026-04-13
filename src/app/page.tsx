@@ -1,7 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { Suspense, useEffect, useState } from "react";
 import { AppNav } from "@/components/app-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ScoringExplainer } from "@/components/scoring-explainer";
 import { dimensionRowsForDisplay } from "@/lib/analysis/dimensionScoresDisplay";
 
 type AnalyzeResponse = {
@@ -81,14 +84,21 @@ function verdictBadgeVariant(
   return "secondary";
 }
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session } = useSession();
   const [code, setCode] = useState("");
   const [prUrl, setPrUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [inline, setInline] = useState<AnalyzeResponse | null>(null);
   const [queueHint, setQueueHint] = useState<string | null>(null);
+
+  useEffect(() => {
+    const p = searchParams.get("prUrl");
+    if (p) setPrUrl(p);
+  }, [searchParams]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -167,17 +177,32 @@ export default function Home() {
             a clear verdict, and the highest-impact issues first — not a wall of
             noise.
           </p>
+          <div className="flex flex-wrap gap-2 pt-2">
+            {session ? (
+              <Button type="button" variant="outline" size="sm" asChild>
+                <Link href="/connect">Connect repositories & pick a PR</Link>
+              </Button>
+            ) : (
+              <Button type="button" variant="outline" size="sm" asChild>
+                <Link href="/connect">Sign in to browse repos & PRs</Link>
+              </Button>
+            )}
+          </div>
         </header>
 
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">Run analysis</CardTitle>
             <CardDescription>
-              PR URLs need{" "}
+              PR analysis needs a server{" "}
               <code className="rounded bg-zinc-100 px-1 py-0.5 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
                 GITHUB_TOKEN
               </code>{" "}
-              on the server. Leave the PR field empty to paste code.
+              to fetch files. Use{" "}
+              <Link href="/connect" className="font-medium text-emerald-700 underline dark:text-emerald-400">
+                Connect
+              </Link>{" "}
+              to choose a PR, or paste a PR URL below.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -228,6 +253,8 @@ export default function Home() {
           </CardContent>
         </Card>
 
+        <ScoringExplainer />
+
         {inline ? (
           <Card>
             <CardHeader>
@@ -243,6 +270,20 @@ export default function Home() {
         ) : null}
       </main>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-full flex-1 items-center justify-center bg-zinc-50 text-zinc-600 dark:bg-zinc-950 dark:text-zinc-400">
+          Loading…
+        </div>
+      }
+    >
+      <HomeContent />
+    </Suspense>
   );
 }
 
