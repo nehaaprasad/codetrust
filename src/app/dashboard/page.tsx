@@ -193,12 +193,12 @@ export default function DashboardPage() {
   }, [q.data]);
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="flex min-h-full flex-1 flex-col bg-zinc-50 text-zinc-900 dark:bg-transparent dark:text-zinc-100">
       <AppNav />
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-10">
         <header className="space-y-2">
-          <p className="text-sm font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+          <p className="text-sm font-medium uppercase tracking-wide text-sky-700 dark:text-sky-400">
             AI Code Trust
           </p>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -408,7 +408,7 @@ export default function DashboardPage() {
 
         {sessionStatus === "unauthenticated" && dbReady ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            <Link href="/api/auth/signin" className="font-medium text-emerald-700 underline dark:text-emerald-400">
+            <Link href="/api/auth/signin" className="font-medium text-sky-700 underline dark:text-sky-400">
               Sign in
             </Link>{" "}
             to see usage and API keys. The runs table below lists all stored analyses on this instance.
@@ -425,7 +425,7 @@ export default function DashboardPage() {
                     From GitHub OAuth.{" "}
                     <Link
                       href="/connect"
-                      className="font-medium text-emerald-700 underline dark:text-emerald-400"
+                      className="font-medium text-sky-700 underline dark:text-sky-400"
                     >
                       Connect
                     </Link>{" "}
@@ -453,7 +453,7 @@ export default function DashboardPage() {
                             href={r.htmlUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-emerald-700 hover:underline dark:text-emerald-400"
+                            className="text-sky-700 hover:underline dark:text-sky-400"
                           >
                             {r.fullName}
                           </a>
