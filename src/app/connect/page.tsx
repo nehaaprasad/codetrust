@@ -69,12 +69,12 @@ export default function ConnectPage() {
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="flex min-h-full flex-1 flex-col bg-zinc-50 text-zinc-900 dark:bg-transparent dark:text-zinc-100">
       <AppNav />
 
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 px-6 py-10">
         <header className="space-y-2">
-          <p className="text-sm font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+          <p className="text-sm font-medium uppercase tracking-wide text-sky-700 dark:text-sky-400">
             Connect & analyze
           </p>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -132,7 +132,7 @@ export default function ConnectPage() {
                           }}
                           className={`w-full rounded-md px-2 py-2 text-left transition-colors ${
                             selected?.id === r.id
-                              ? "bg-emerald-100 text-emerald-950 dark:bg-emerald-950 dark:text-emerald-100"
+                              ? "bg-sky-100 text-sky-950 dark:bg-sky-500/15 dark:text-sky-100 dark:ring-1 dark:ring-sky-400/30"
                               : "hover:bg-zinc-100 dark:hover:bg-zinc-900"
                           }`}
                         >
@@ -245,7 +245,7 @@ export default function ConnectPage() {
         )}
 
         <p className="text-sm text-zinc-500">
-          <Link href="/" className="font-medium text-emerald-700 underline dark:text-emerald-400">
+          <Link href="/" className="font-medium text-sky-700 underline dark:text-sky-400">
             ← Back to analyze
           </Link>
         </p>
