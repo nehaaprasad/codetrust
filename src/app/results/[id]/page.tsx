@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { AppNav } from "@/components/app-nav";
 import { ScoringExplainer } from "@/components/scoring-explainer";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,6 +17,23 @@ import {
 } from "@/components/ui/card";
 import { IssueDetailList } from "@/components/issue-detail-list";
 import { dimensionRowsForDisplay } from "@/lib/analysis/dimensionScoresDisplay";
+import { cn } from "@/lib/utils";
+
+function verdictBadgeVariant(
+  d: string,
+): "default" | "secondary" | "risky" | "block" {
+  if (d === "SAFE") return "default";
+  if (d === "RISKY") return "risky";
+  if (d === "BLOCK") return "block";
+  return "secondary";
+}
+
+function verdictAccentBorder(d: string): string {
+  if (d === "SAFE") return "border-l-sky-500 dark:border-l-sky-400";
+  if (d === "RISKY") return "border-l-amber-500 dark:border-l-amber-400";
+  if (d === "BLOCK") return "border-l-red-500 dark:border-l-red-400";
+  return "border-l-zinc-300 dark:border-l-zinc-600";
+}
 
 type AnalysisPayload = {
   id: string;
@@ -79,12 +97,20 @@ function SameRepoHistory({
 
   if (q.isPending) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">History for this repository</CardTitle>
+      <Card className="overflow-hidden rounded-xl border-zinc-200/90 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/50 dark:shadow-none">
+        <CardHeader className="border-b border-zinc-100 dark:border-zinc-800">
+          <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            History for this repository
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-zinc-500">Loading…</p>
+        <CardContent className="py-8">
+          <div className="flex items-center gap-3">
+            <div
+              className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300"
+              aria-hidden
+            />
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading…</p>
+          </div>
         </CardContent>
       </Card>
     );
@@ -97,40 +123,52 @@ function SameRepoHistory({
   const others = q.data.filter((row) => row.id !== currentId);
   if (others.length === 0) {
     return (
-      <Card>
+      <Card className="overflow-hidden rounded-xl border-zinc-200/90 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/50 dark:shadow-none">
         <CardHeader>
-          <CardTitle className="text-base">History for this repository</CardTitle>
-          <CardDescription>This is the first saved analysis for this repo.</CardDescription>
+          <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            History for this repository
+          </CardTitle>
+          <CardDescription className="text-xs">
+            This is the first saved analysis for this repo.
+          </CardDescription>
         </CardHeader>
       </Card>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Previous analyses for this repository</CardTitle>
-        <CardDescription>
+    <Card className="overflow-hidden rounded-xl border-zinc-200/90 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/50 dark:shadow-none">
+      <CardHeader className="border-b border-zinc-100 pb-4 dark:border-zinc-800">
+        <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          Previous analyses for this repository
+        </CardTitle>
+        <CardDescription className="text-xs">
           Other runs targeting the same GitHub repo (newest first).
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <ul className="space-y-2 text-sm">
+      <CardContent className="pt-2">
+        <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
           {others.map((row) => (
-            <li
-              key={row.id}
-              className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 pb-2 last:border-0 dark:border-zinc-800"
-            >
+            <li key={row.id}>
               <Link
                 href={`/results/${row.id}`}
-                className="font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
               >
-                {new Date(row.createdAt).toLocaleString()}
-                {row.prNumber != null ? ` · PR #${row.prNumber}` : ""}
+                <span className="min-w-0 font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                  {new Date(row.createdAt).toLocaleString()}
+                  {row.prNumber != null ? (
+                    <span className="text-zinc-400"> · PR #{row.prNumber}</span>
+                  ) : null}
+                </span>
+                <span className="flex shrink-0 items-center gap-2">
+                  <span className="tabular-nums text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                    {row.score}
+                  </span>
+                  <Badge variant={verdictBadgeVariant(row.decision)} className="rounded-md text-[11px]">
+                    {row.decision}
+                  </Badge>
+                </span>
               </Link>
-              <span className="text-zinc-600 dark:text-zinc-400">
-                {row.score} · {row.decision}
-              </span>
             </li>
           ))}
         </ul>
@@ -166,7 +204,11 @@ export default function ResultPage() {
   if (!id) {
     return (
       <Shell>
-        <p className="p-8 text-sm text-zinc-600">Missing analysis id.</p>
+        <div className="mx-auto max-w-lg px-4 py-16 sm:px-6">
+          <p className="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-400">
+            Missing analysis id.
+          </p>
+        </div>
       </Shell>
     );
   }
@@ -174,8 +216,12 @@ export default function ResultPage() {
   if (q.isPending) {
     return (
       <Shell>
-        <div className="flex flex-1 items-center justify-center p-8 text-zinc-600">
-          Loading analysis…
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-24">
+          <div
+            className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300"
+            aria-hidden
+          />
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading analysis…</p>
         </div>
       </Shell>
     );
@@ -184,13 +230,18 @@ export default function ResultPage() {
   if (q.isError) {
     return (
       <Shell>
-        <div className="mx-auto max-w-2xl space-y-4 p-8">
-          <p className="text-sm text-red-600">
-            {q.error instanceof Error ? q.error.message : "Error"}
-          </p>
-          <Link href="/" className="text-sm font-medium text-emerald-700 underline">
-            Back home
-          </Link>
+        <div className="mx-auto max-w-lg px-4 py-16 sm:px-6">
+          <div className="rounded-xl border border-red-200 bg-red-50/80 px-5 py-4 dark:border-red-900/60 dark:bg-red-950/30">
+            <p className="text-sm font-medium text-red-800 dark:text-red-200">
+              {q.error instanceof Error ? q.error.message : "Error"}
+            </p>
+            <Link
+              href="/"
+              className="mt-4 inline-flex text-sm font-medium text-zinc-700 underline-offset-4 hover:underline dark:text-zinc-300"
+            >
+              ← Back to analyze
+            </Link>
+          </div>
         </div>
       </Shell>
     );
@@ -199,107 +250,154 @@ export default function ResultPage() {
   const data = q.data;
   if (!data) return null;
 
-  const verdictClass =
-    data.decision === "SAFE"
-      ? "text-emerald-600 dark:text-emerald-400"
-      : data.decision === "RISKY"
-        ? "text-amber-600 dark:text-amber-400"
-        : "text-red-600 dark:text-red-400";
-
   const dimRows = dimensionRowsForDisplay(data.dimensionScores ?? null);
 
   return (
     <Shell>
-      <main className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-12">
+      <main className="mx-auto flex max-w-4xl flex-col gap-10 px-4 py-12 sm:px-6 sm:py-16">
         <Link
           href="/"
-          className="text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+          className="w-fit text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:hover:text-zinc-200"
         >
           ← New analysis
         </Link>
 
-        <header className="space-y-2">
-          <p className="text-xs uppercase text-zinc-500">
-            {new Date(data.createdAt).toLocaleString()}
-          </p>
-          <p className="text-xs text-zinc-500">
-            Model: <span className="font-mono text-zinc-700 dark:text-zinc-300">{data.modelVersion}</span>
-          </p>
-          {data.prCommentUrl ? (
-            <p className="text-sm">
-              <a
-                href={data.prCommentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-emerald-700 underline dark:text-emerald-400"
-              >
-                View comment on GitHub
-              </a>
-            </p>
-          ) : null}
-          <div className="flex flex-wrap items-end gap-8">
-            <div>
-              <p className="text-xs uppercase text-zinc-500">Trust score</p>
-              <p className="text-5xl font-semibold tabular-nums">{data.score}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-zinc-500">Verdict</p>
-              <p className={`text-3xl font-semibold ${verdictClass}`}>
-                {data.decision}
-              </p>
-            </div>
-          </div>
-          {data.previousScore != null && data.previousDecision != null ? (
-            <Card className="border-emerald-200 bg-emerald-50/50 dark:border-emerald-900 dark:bg-emerald-950/30">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Before / after</CardTitle>
-                <CardDescription>
-                  Compared to the prior saved analysis for this repository.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-8 text-sm">
-                  <div>
-                    <p className="text-xs uppercase text-zinc-500">Previous</p>
-                    <p className="text-2xl font-semibold tabular-nums">{data.previousScore}</p>
-                    <p className="text-zinc-600 dark:text-zinc-400">{data.previousDecision}</p>
+        <header className="space-y-6">
+          <div
+            className={cn(
+              "overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-700/60 dark:bg-zinc-950/55 dark:shadow-[0_0_0_1px_rgba(63,63,70,0.45),0_24px_64px_-24px_rgba(0,0,0,0.65),0_0_48px_-12px_rgba(56,189,248,0.12)]",
+              "border-l-4",
+              verdictAccentBorder(data.decision),
+            )}
+          >
+            <div className="px-5 py-6 sm:px-8 sm:py-8">
+              <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0 flex-1 space-y-6">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+                    <time dateTime={data.createdAt}>
+                      {new Date(data.createdAt).toLocaleString()}
+                    </time>
+                    <span className="hidden text-zinc-300 sm:inline dark:text-zinc-600">·</span>
+                    <span>
+                      <span className="text-zinc-400">model</span>{" "}
+                      <span className="text-zinc-700 dark:text-zinc-300">{data.modelVersion}</span>
+                    </span>
+                    {data.prCommentUrl ? (
+                      <>
+                        <span className="hidden text-zinc-300 sm:inline dark:text-zinc-600">·</span>
+                        <a
+                          href={data.prCommentUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-zinc-700 underline decoration-zinc-300 underline-offset-2 transition-colors hover:text-zinc-900 dark:text-zinc-300 dark:decoration-zinc-600 dark:hover:text-white"
+                        >
+                          Comment on GitHub
+                        </a>
+                      </>
+                    ) : null}
                   </div>
-                  <div>
-                    <p className="text-xs uppercase text-zinc-500">Current</p>
-                    <p className="text-2xl font-semibold tabular-nums">{data.score}</p>
-                    <p className="text-zinc-600 dark:text-zinc-400">{data.decision}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase text-zinc-500">Delta</p>
-                    <p className="text-2xl font-semibold tabular-nums">
-                      {data.score - data.previousScore >= 0 ? "+" : ""}
-                      {data.score - data.previousScore}
-                    </p>
+
+                  <div className="flex flex-wrap items-end gap-10">
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+                        Trust score
+                      </p>
+                      <p className="mt-1 bg-gradient-to-br from-zinc-950 to-zinc-600 bg-clip-text text-6xl font-semibold tabular-nums tracking-tight text-transparent dark:from-white dark:to-zinc-400">
+                        {data.score}
+                      </p>
+                    </div>
+                    <div className="pb-1">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+                        Verdict
+                      </p>
+                      <div className="mt-2">
+                        <Badge
+                          variant={verdictBadgeVariant(data.decision)}
+                          className="rounded-full px-4 py-1.5 text-sm font-semibold tracking-wide"
+                        >
+                          {data.decision}
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
+          </div>
+
+          {data.previousScore != null && data.previousDecision != null ? (
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50/90 dark:border-zinc-800 dark:bg-zinc-900/40">
+              <div className="border-b border-zinc-200/80 px-5 py-4 dark:border-zinc-800">
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                  Before / after
+                </h2>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  Compared to the prior saved analysis for this repository.
+                </p>
+              </div>
+              <div className="grid gap-6 px-5 py-5 sm:grid-cols-3 sm:gap-8">
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+                    Previous
+                  </p>
+                  <p className="mt-1 text-3xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+                    {data.previousScore}
+                  </p>
+                  <Badge variant={verdictBadgeVariant(data.previousDecision)} className="mt-2 rounded-md text-xs">
+                    {data.previousDecision}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+                    Current
+                  </p>
+                  <p className="mt-1 text-3xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+                    {data.score}
+                  </p>
+                  <Badge variant={verdictBadgeVariant(data.decision)} className="mt-2 rounded-md text-xs">
+                    {data.decision}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+                    Delta
+                  </p>
+                  <p
+                    className={cn(
+                      "mt-1 text-3xl font-semibold tabular-nums",
+                      data.score - data.previousScore >= 0
+                        ? "text-sky-700 dark:text-sky-400"
+                        : "text-red-600 dark:text-red-400",
+                    )}
+                  >
+                    {data.score - data.previousScore >= 0 ? "+" : ""}
+                    {data.score - data.previousScore}
+                  </p>
+                </div>
+              </div>
+            </div>
           ) : null}
+
           {data.repoUrl ? (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Repository:{" "}
+            <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+              <span className="text-zinc-500 dark:text-zinc-500">Repository</span>{" "}
               <a
                 href={data.repoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-emerald-700 underline dark:text-emerald-400"
+                className="font-medium text-zinc-900 underline decoration-zinc-300 underline-offset-2 transition-colors hover:decoration-zinc-500 dark:text-zinc-100 dark:decoration-zinc-600"
               >
                 {data.repoUrl.replace(/^https:\/\/github\.com\//, "")}
               </a>
               {data.prUrl != null && data.prNumber != null ? (
                 <>
                   {" "}
-                  ·{" "}
+                  <span className="text-zinc-400">·</span>{" "}
                   <a
                     href={data.prUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-medium text-emerald-700 underline dark:text-emerald-400"
+                    className="font-medium text-zinc-900 underline decoration-zinc-300 underline-offset-2 transition-colors hover:decoration-zinc-500 dark:text-zinc-100 dark:decoration-zinc-600"
                   >
                     PR #{data.prNumber}
                   </a>
@@ -313,31 +411,47 @@ export default function ResultPage() {
           <SameRepoHistory repoUrl={data.repoUrl} currentId={data.id} />
         ) : null}
 
-        <p className="text-base leading-relaxed text-zinc-700 dark:text-zinc-300">
-          {data.summary}
-        </p>
+        <section className="rounded-xl border border-zinc-200/90 bg-white px-5 py-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/50 dark:shadow-none sm:px-6 sm:py-7">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+            Summary
+          </h2>
+          <p className="mt-3 text-base leading-relaxed text-zinc-700 dark:text-zinc-300">
+            {data.summary}
+          </p>
+        </section>
 
         {dimRows.length > 0 ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Dimension scores</CardTitle>
-              <CardDescription>
+          <Card className="overflow-hidden rounded-xl border-zinc-200/90 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/50 dark:shadow-none">
+            <CardHeader className="border-b border-zinc-100 dark:border-zinc-800">
+              <CardTitle className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                Dimension scores
+              </CardTitle>
+              <CardDescription className="text-xs leading-relaxed">
                 0–100 per category (higher is better). Weights match the explainer
                 below.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <ul className="grid gap-3 sm:grid-cols-2">
+            <CardContent className="pt-5">
+              <ul className="grid gap-2 sm:grid-cols-2 sm:gap-3">
                 {dimRows.map((row) => (
                   <li
                     key={row.key}
-                    className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900"
+                    className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200/90 bg-zinc-50/80 px-3 py-2.5 text-sm dark:border-zinc-800 dark:bg-zinc-950/40"
                   >
-                    <span className="text-zinc-700 dark:text-zinc-300">
+                    <span className="min-w-0 text-zinc-700 dark:text-zinc-300">
                       {row.label}{" "}
-                      <span className="text-zinc-400">({row.weightPct}%)</span>
+                      <span className="text-zinc-400 dark:text-zinc-500">({row.weightPct}%)</span>
                     </span>
-                    <span className="tabular-nums font-semibold text-zinc-900 dark:text-zinc-100">
+                    <span
+                      className={cn(
+                        "shrink-0 tabular-nums text-sm font-semibold",
+                        row.score >= 85
+                          ? "text-sky-700 dark:text-sky-400"
+                          : row.score >= 60
+                            ? "text-amber-700 dark:text-amber-400"
+                            : "text-red-600 dark:text-red-400",
+                      )}
+                    >
                       {row.score}
                     </span>
                   </li>
@@ -349,28 +463,37 @@ export default function ResultPage() {
 
         <ScoringExplainer />
 
-        <section>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-            Issues
-          </h2>
-          <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-            Expand each row for why it matters and where it was detected.
-          </p>
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
+              Issues
+            </h2>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Expand each row for why it matters and where it was detected.
+            </p>
+          </div>
           <IssueDetailList issues={data.issues} />
         </section>
 
         {data.sources.length > 0 ? (
-          <section>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          <section className="rounded-xl border border-zinc-200/90 bg-white px-5 py-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/50 dark:shadow-none sm:px-6">
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500 dark:text-zinc-400">
               Sources
             </h2>
-            <ul className="space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+            <ul className="mt-4 space-y-3 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
               {data.sources.map((s, i) => (
-                <li key={i}>
-                  {s.title}
-                  {s.excerpt ? ` — ${s.excerpt}` : ""}
+                <li
+                  key={i}
+                  className="border-b border-zinc-100 pb-3 last:border-0 last:pb-0 dark:border-zinc-800"
+                >
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">{s.title}</span>
+                  {s.excerpt ? (
+                    <span className="text-zinc-600 dark:text-zinc-400"> — {s.excerpt}</span>
+                  ) : null}
                   {s.trustLevel ? (
-                    <span className="text-zinc-500"> ({s.trustLevel} trust)</span>
+                    <span className="mt-1 block text-xs text-zinc-500">
+                      Trust: {s.trustLevel}
+                    </span>
                   ) : null}
                 </li>
               ))}
@@ -378,15 +501,16 @@ export default function ResultPage() {
           </section>
         ) : null}
 
-        <RerunButton analysisId={id} />
-
-        {data.prUrl ? (
-          <Link href={`/results/${id}/diff`}>
-            <Button type="button" variant="outline">
-              View PR diff
-            </Button>
-          </Link>
-        ) : null}
+        <div className="flex flex-col gap-3 border-t border-zinc-200 pt-10 dark:border-zinc-800 sm:flex-row sm:flex-wrap sm:items-center">
+          <RerunButton analysisId={id} />
+          {data.prUrl ? (
+            <Link href={`/results/${id}/diff`} className="sm:ml-0">
+              <Button type="button" variant="outline" className="w-full sm:w-auto">
+                View PR diff
+              </Button>
+            </Link>
+          ) : null}
+        </div>
       </main>
     </Shell>
   );
@@ -418,10 +542,20 @@ function RerunButton({ analysisId }: { analysisId: string }) {
 
   return (
     <div className="space-y-2">
-      <Button type="button" variant="outline" onClick={rerun} disabled={loading}>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={rerun}
+        disabled={loading}
+        className="w-full border-zinc-300 bg-white font-medium shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:w-auto"
+      >
         {loading ? "Re-running…" : "Re-run analysis"}
       </Button>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? (
+        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
