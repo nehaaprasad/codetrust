@@ -1,21 +1,25 @@
-import { createGitHubClient } from "./client";
+import { createGitHubClient, createGitHubClientForUser } from "./client";
 import type { GitHubPullRequest } from "./types";
 
 const MAX_PRS = 30;
 
 /**
- * Fetch pull requests from a repository
+ * Fetch pull requests from a repository.
+ * Uses the user's OAuth token when `accessToken` is set; otherwise the server PAT.
  */
 export async function fetchRepoPullRequests(
   owner: string,
   repo: string,
   options?: {
+    accessToken?: string;
     state?: "open" | "closed" | "all";
     sort?: "created" | "updated" | "popularity" | "long-running";
     direction?: "asc" | "desc";
   }
 ): Promise<GitHubPullRequest[]> {
-  const octokit = createGitHubClient();
+  const octokit = options?.accessToken
+    ? createGitHubClientForUser(options.accessToken)
+    : createGitHubClient();
 
   const { data: prs } = await octokit.pulls.list({
     owner,
