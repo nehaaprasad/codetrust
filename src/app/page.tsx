@@ -161,15 +161,15 @@ function HomeContent() {
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="flex min-h-full flex-1 flex-col bg-zinc-50 text-zinc-900 dark:bg-transparent dark:text-zinc-100">
       <AppNav />
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-10 px-6 py-16">
         <header className="space-y-3">
-          <p className="text-sm font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+          <p className="text-sm font-medium uppercase tracking-[0.2em] text-sky-700 dark:text-sky-400/90">
             AI Code Trust
           </p>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h1 className="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-600 bg-clip-text text-3xl font-semibold tracking-tight text-transparent dark:from-white dark:via-zinc-100 dark:to-zinc-400 sm:text-4xl">
             Decide if code is safe to ship
           </h1>
           <p className="max-w-2xl text-lg leading-relaxed text-zinc-600 dark:text-zinc-400">
@@ -190,7 +190,7 @@ function HomeContent() {
           </div>
         </header>
 
-        <Card>
+        <Card className="overflow-hidden rounded-2xl border-zinc-200/90 bg-white/90 shadow-lg shadow-zinc-900/5 backdrop-blur-sm dark:border-zinc-700/60 dark:bg-zinc-950/50 dark:shadow-[0_0_0_1px_rgba(63,63,70,0.4),0_24px_64px_-28px_rgba(0,0,0,0.55)]">
           <CardHeader>
             <CardTitle className="text-xl">Run analysis</CardTitle>
             <CardDescription>
@@ -199,7 +199,7 @@ function HomeContent() {
                 GITHUB_TOKEN
               </code>{" "}
               to fetch files. Use{" "}
-              <Link href="/connect" className="font-medium text-emerald-700 underline dark:text-emerald-400">
+              <Link href="/connect" className="font-medium text-sky-700 underline decoration-sky-300/70 underline-offset-2 transition-colors hover:text-sky-800 dark:text-sky-400 dark:decoration-sky-500/50 dark:hover:text-sky-300">
                 Connect
               </Link>{" "}
               to choose a PR, or paste a PR URL below.
@@ -256,7 +256,7 @@ function HomeContent() {
         <ScoringExplainer />
 
         {inline ? (
-          <Card>
+          <Card className="overflow-hidden rounded-2xl border-zinc-200/90 bg-white/90 shadow-lg dark:border-zinc-700/60 dark:bg-zinc-950/50 dark:shadow-[0_0_0_1px_rgba(63,63,70,0.4),0_24px_64px_-28px_rgba(0,0,0,0.55)]">
             <CardHeader>
               <CardTitle className="text-base">Result</CardTitle>
               <CardDescription>
@@ -294,8 +294,10 @@ function ResultSummary({ data }: { data: AnalyzeResponse }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-4">
         <div>
-          <p className="text-xs uppercase text-zinc-500">Trust score</p>
-          <p className="text-4xl font-semibold tabular-nums">{data.score}</p>
+          <p className="text-xs uppercase tracking-wider text-zinc-500">Trust score</p>
+          <p className="bg-gradient-to-br from-zinc-900 to-zinc-600 bg-clip-text text-4xl font-semibold tabular-nums text-transparent dark:from-white dark:to-zinc-400">
+            {data.score}
+          </p>
         </div>
         <div>
           <p className="text-xs uppercase text-zinc-500">Verdict</p>
@@ -330,7 +332,7 @@ function ResultSummary({ data }: { data: AnalyzeResponse }) {
             href={data.prCommentUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-medium text-emerald-700 underline dark:text-emerald-400"
+            className="font-medium text-sky-700 underline decoration-sky-300/70 underline-offset-2 transition-colors hover:text-sky-800 dark:text-sky-400 dark:decoration-sky-500/50 dark:hover:text-sky-300"
           >
             View comment on GitHub
           </a>
