@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { AppNav } from "@/components/app-nav";
+import { ScoringExplainer } from "@/components/scoring-explainer";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -248,9 +249,35 @@ export default function ResultPage() {
             </div>
           </div>
           {data.previousScore != null && data.previousDecision != null ? (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Previous run: {data.previousScore} ({data.previousDecision})
-            </p>
+            <Card className="border-emerald-200 bg-emerald-50/50 dark:border-emerald-900 dark:bg-emerald-950/30">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Before / after</CardTitle>
+                <CardDescription>
+                  Compared to the prior saved analysis for this repository.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-8 text-sm">
+                  <div>
+                    <p className="text-xs uppercase text-zinc-500">Previous</p>
+                    <p className="text-2xl font-semibold tabular-nums">{data.previousScore}</p>
+                    <p className="text-zinc-600 dark:text-zinc-400">{data.previousDecision}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase text-zinc-500">Current</p>
+                    <p className="text-2xl font-semibold tabular-nums">{data.score}</p>
+                    <p className="text-zinc-600 dark:text-zinc-400">{data.decision}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase text-zinc-500">Delta</p>
+                    <p className="text-2xl font-semibold tabular-nums">
+                      {data.score - data.previousScore >= 0 ? "+" : ""}
+                      {data.score - data.previousScore}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           ) : null}
           {data.repoUrl ? (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -294,9 +321,8 @@ export default function ResultPage() {
             <CardHeader>
               <CardTitle className="text-lg">Dimension scores</CardTitle>
               <CardDescription>
-                0–100 per category (higher is better). Weights: security 30%, logic
-                25%, performance 15%, testing 15%, accessibility 10%, maintainability
-                5%.
+                0–100 per category (higher is better). Weights match the explainer
+                below.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -319,6 +345,8 @@ export default function ResultPage() {
             </CardContent>
           </Card>
         ) : null}
+
+        <ScoringExplainer />
 
         <section>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
@@ -366,10 +394,10 @@ export default function ResultPage() {
 
         <RerunButton analysisId={id} />
 
-        {data.sources.some((s) => s.url?.includes("/pull/")) ? (
+        {data.prUrl ? (
           <Link href={`/results/${id}/diff`}>
             <Button type="button" variant="outline">
-              View changes
+              View PR diff
             </Button>
           </Link>
         ) : null}
