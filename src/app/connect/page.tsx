@@ -14,17 +14,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import type { PrListSource } from "@/lib/github/listPrs";
 import type { GitHubPullRequest, GitHubRepo } from "@/lib/github/types";
+
+type PrsPayload = { prs: GitHubPullRequest[]; prSource: PrListSource | null };
 
 export default function ConnectPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [selected, setSelected] = useState<GitHubRepo | null>(null);
+  const [prListState, setPrListState] = useState<"open" | "all">("open");
 
   const reposQ = useQuery({
     queryKey: ["github-repos"],
     queryFn: async () => {
-      const res = await fetch("/api/github/repos");
+      const res = await fetch("/api/github/repos", { credentials: "include" });
       const data = (await res.json()) as { repos?: GitHubRepo[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Failed to load repositories.");
       return data.repos ?? [];
@@ -33,17 +37,29 @@ export default function ConnectPage() {
   });
 
   const prsQ = useQuery({
-    queryKey: ["github-prs", selected?.fullName],
-    queryFn: async () => {
-      if (!selected) return [];
+    queryKey: ["github-prs", selected?.fullName, prListState],
+    queryFn: async (): Promise<PrsPayload> => {
+      if (!selected) return { prs: [], prSource: null };
       const [owner, repo] = selected.fullName.split("/");
-      if (!owner || !repo) return [];
-      const res = await fetch(
-        `/api/github/prs?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`,
-      );
-      const data = (await res.json()) as { prs?: GitHubPullRequest[]; error?: string };
+      if (!owner || !repo) return { prs: [], prSource: null };
+      const params = new URLSearchParams({
+        owner,
+        repo,
+        state: prListState,
+      });
+      const res = await fetch(`/api/github/prs?${params.toString()}`, {
+        credentials: "include",
+      });
+      const data = (await res.json()) as {
+        prs?: GitHubPullRequest[];
+        prSource?: PrListSource | null;
+        error?: string;
+      };
       if (!res.ok) throw new Error(data.error ?? "Failed to load pull requests.");
-      return data.prs ?? [];
+      return {
+        prs: data.prs ?? [],
+        prSource: data.prSource ?? null,
+      };
     },
     enabled: Boolean(selected),
   });
@@ -110,7 +126,10 @@ export default function ConnectPage() {
                       <li key={r.id}>
                         <button
                           type="button"
-                          onClick={() => setSelected(r)}
+                          onClick={() => {
+                            setSelected(r);
+                            setPrListState("open");
+                          }}
                           className={`w-full rounded-md px-2 py-2 text-left transition-colors ${
                             selected?.id === r.id
                               ? "bg-emerald-100 text-emerald-950 dark:bg-emerald-950 dark:text-emerald-100"
@@ -134,7 +153,11 @@ export default function ConnectPage() {
                 <CardTitle className="text-lg">Pull requests</CardTitle>
                 <CardDescription>
                   {selected
-                    ? `Open PRs for ${selected.fullName}`
+                    ? `${prListState === "open" ? "Open" : "Open + closed"} PRs — ${
+                        prsQ.data?.prSource?.forkResolvedToUpstream
+                          ? `upstream ${prsQ.data.prSource.listingFullName} (fork: ${selected.fullName})`
+                          : selected.fullName
+                      }`
                     : "Select a repository on the left."}
                 </CardDescription>
               </CardHeader>
@@ -144,12 +167,56 @@ export default function ConnectPage() {
                 ) : prsQ.isPending ? (
                   <p className="text-sm text-zinc-500">Loading PRs…</p>
                 ) : prsQ.isError ? (
-                  <p className="text-sm text-red-600" role="alert">
-                    {prsQ.error instanceof Error ? prsQ.error.message : "Error"}
-                  </p>
+                  <div className="space-y-2 text-sm text-red-600" role="alert">
+                    <p>{prsQ.error instanceof Error ? prsQ.error.message : "Error"}</p>
+                    <p className="text-zinc-600 dark:text-zinc-400">
+                      If this says sign-in: use <strong>Sign out</strong> in the nav, then{" "}
+                      <strong>Sign in with GitHub</strong> again so your OAuth token (with{" "}
+                      <code className="rounded bg-zinc-200 px-1 font-mono text-xs dark:bg-zinc-800">
+                        repo
+                      </code>{" "}
+                      scope) is stored.
+                    </p>
+                  </div>
+                ) : prsQ.data?.prs?.length === 0 ? (
+                  <div className="space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
+                    {prsQ.data?.prSource?.forkResolvedToUpstream ? (
+                      <p className="rounded-md border border-sky-200 bg-sky-50 p-2 text-sky-950 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-100">
+                        This repo is a <strong>fork</strong>. PRs are listed from the upstream
+                        repository <strong>{prsQ.data.prSource.listingFullName}</strong>. If the list
+                        is still empty, try <strong>Show open + closed</strong> or check GitHub
+                        directly.
+                      </p>
+                    ) : null}
+                    <p>
+                      No {prListState === "open" ? "open " : ""}pull requests returned
+                      {prsQ.data?.prSource?.forkResolvedToUpstream
+                        ? ` for ${prsQ.data.prSource.listingFullName}.`
+                        : " for this repo."}
+                    </p>
+                    {prListState === "open" ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPrListState("all")}
+                      >
+                        Show open + closed (last {50})
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPrListState("open")}
+                      >
+                        Show open only
+                      </Button>
+                    )}
+                  </div>
                 ) : (
                   <ul className="max-h-72 space-y-2 overflow-y-auto text-sm">
-                    {prsQ.data?.map((pr) => (
+                    {prsQ.data?.prs?.map((pr) => (
                       <li
                         key={pr.id}
                         className="flex flex-col gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
