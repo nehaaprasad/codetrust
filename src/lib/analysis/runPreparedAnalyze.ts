@@ -39,6 +39,7 @@ export type AnalyzePipelineJson = {
 export async function runPreparedAnalyze(
   input: PreparedAnalyzeInput,
   job?: ProgressJob,
+  persistContext?: { userId?: string | null; apiKeyId?: string | null },
 ): Promise<AnalyzePipelineJson> {
   const { files, stored, projectId, parsedPr, workspaceId } = input;
 
@@ -90,6 +91,8 @@ export async function runPreparedAnalyze(
       prCommentUrl,
       prCommentId,
       workspaceId: workspaceId ?? null,
+      userId: persistContext?.userId ?? null,
+      apiKeyId: persistContext?.apiKeyId ?? null,
       ...prMeta,
     });
     id = row.id;
