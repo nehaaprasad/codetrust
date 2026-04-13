@@ -1,8 +1,8 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { AppNav } from "@/components/app-nav";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -54,10 +55,33 @@ type Health = {
 
 type GitHubRepoLite = { fullName: string; htmlUrl: string };
 
+type UsagePayload = {
+  totalAnalyses: number;
+  last7Days: number;
+  byDecision: { SAFE: number; RISKY: number; BLOCK: number };
+  apiKeys: Array<{
+    id: string;
+    name: string;
+    prefix: string;
+    lastUsedAt: string | null;
+    revokedAt: string | null;
+    createdAt: string;
+    analysisCount: number;
+  }>;
+};
+
 export default function DashboardPage() {
   const verdictFilter = useDashboardUiStore((s) => s.verdictFilter);
   const setVerdictFilter = useDashboardUiStore((s) => s.setVerdictFilter);
   const { status: sessionStatus } = useSession();
+  const queryClient = useQueryClient();
+  const [listScope, setListScope] = useState<"all" | "mine">("mine");
+  const [newKeyLabel, setNewKeyLabel] = useState("CI / scripts");
+  const [revealedKey, setRevealedKey] = useState<string | null>(null);
+
+  /** Guests always query all runs; signed-in users respect the My / All toggle. */
+  const effectiveListScope =
+    sessionStatus === "unauthenticated" ? "all" : listScope;
 
   const health = useQuery({
     queryKey: ["health"],
@@ -69,19 +93,65 @@ export default function DashboardPage() {
 
   const dbReady = health.data?.database === "configured";
 
+  const usageQ = useQuery({
+    queryKey: ["dashboard-usage"],
+    queryFn: async () => {
+      const res = await fetch("/api/dashboard/usage");
+      const data = (await res.json()) as UsagePayload & { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Failed to load usage.");
+      return data;
+    },
+    enabled: dbReady && sessionStatus === "authenticated",
+  });
+
+  const createKey = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/api-keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newKeyLabel.trim() || "API key" }),
+      });
+      const data = (await res.json()) as {
+        key?: string;
+        error?: string;
+        warning?: string;
+      };
+      if (!res.ok) throw new Error(data.error ?? "Could not create key.");
+      return data.key ?? "";
+    },
+    onSuccess: (key) => {
+      setRevealedKey(key);
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-usage"] });
+    },
+  });
+
+  const revokeKey = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/api-keys/${id}`, { method: "DELETE" });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Could not revoke.");
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-usage"] });
+    },
+  });
+
   const q = useQuery({
-    queryKey: ["analyses", verdictFilter],
+    queryKey: ["analyses", verdictFilter, effectiveListScope, sessionStatus],
     queryFn: async () => {
       const params = new URLSearchParams({ limit: "50" });
       if (verdictFilter !== "all") {
         params.set("decision", verdictFilter);
+      }
+      if (sessionStatus === "authenticated" && effectiveListScope === "mine") {
+        params.set("scope", "mine");
       }
       const res = await fetch(`/api/analyses?${params.toString()}`);
       const data = (await res.json()) as { items?: Row[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Failed to load analyses.");
       return data.items ?? [];
     },
-    enabled: dbReady,
+    enabled: dbReady && sessionStatus !== "loading",
   });
 
   const reposQ = useQuery({
@@ -132,12 +202,218 @@ export default function DashboardPage() {
             AI Code Trust
           </p>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Recent analyses
+            Developer dashboard
           </h1>
           <p className="max-w-2xl text-zinc-600 dark:text-zinc-400">
-            Saved runs from Postgres. Filter by verdict; open a row for full detail.
+            Usage for your account, API keys for programmatic{" "}
+            <code className="rounded bg-zinc-200 px-1 py-0.5 font-mono text-xs dark:bg-zinc-800">
+              POST /api/analyze
+            </code>
+            , and saved runs.
           </p>
         </header>
+
+        {dbReady && sessionStatus === "authenticated" ? (
+          <div className="space-y-6">
+            {usageQ.isPending ? (
+              <p className="text-sm text-zinc-500">Loading usage…</p>
+            ) : usageQ.isError ? (
+              <p className="text-sm text-red-600" role="alert">
+                {usageQ.error instanceof Error ? usageQ.error.message : "Error"}
+              </p>
+            ) : usageQ.data ? (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardDescription>Your analyses (all time)</CardDescription>
+                      <CardTitle className="text-3xl tabular-nums">
+                        {usageQ.data.totalAnalyses}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardDescription>Last 7 days</CardDescription>
+                      <CardTitle className="text-3xl tabular-nums">
+                        {usageQ.data.last7Days}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardDescription>SAFE</CardDescription>
+                      <CardTitle className="text-3xl tabular-nums">
+                        {usageQ.data.byDecision.SAFE}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardDescription>RISKY / BLOCK</CardDescription>
+                      <CardTitle className="text-3xl tabular-nums">
+                        {usageQ.data.byDecision.RISKY + usageQ.data.byDecision.BLOCK}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">API keys</CardTitle>
+                    <CardDescription>
+                      Use{" "}
+                      <code className="rounded bg-zinc-100 px-1 font-mono text-xs dark:bg-zinc-800">
+                        Authorization: Bearer &lt;key&gt;
+                      </code>{" "}
+                      or header{" "}
+                      <code className="rounded bg-zinc-100 px-1 font-mono text-xs dark:bg-zinc-800">
+                        X-API-Key
+                      </code>
+                      . Keys are shown once when created.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {revealedKey ? (
+                      <div
+                        className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950/40"
+                        role="status"
+                      >
+                        <p className="font-medium text-amber-900 dark:text-amber-200">
+                          Copy your new key (won&apos;t be shown again)
+                        </p>
+                        <code className="mt-2 block break-all font-mono text-xs text-zinc-800 dark:text-zinc-200">
+                          {revealedKey}
+                        </code>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                          onClick={() => {
+                            void navigator.clipboard.writeText(revealedKey);
+                          }}
+                        >
+                          Copy
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="mt-2 ml-2"
+                          onClick={() => setRevealedKey(null)}
+                        >
+                          Dismiss
+                        </Button>
+                      </div>
+                    ) : null}
+
+                    <div className="flex max-w-md flex-col gap-2 sm:flex-row sm:items-end">
+                      <div className="flex-1 space-y-1">
+                        <label htmlFor="keyName" className="text-sm font-medium">
+                          Label
+                        </label>
+                        <Input
+                          id="keyName"
+                          value={newKeyLabel}
+                          onChange={(e) => setNewKeyLabel(e.target.value)}
+                          placeholder="e.g. CI pipeline"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => createKey.mutate()}
+                        disabled={createKey.isPending}
+                      >
+                        {createKey.isPending ? "Creating…" : "Create key"}
+                      </Button>
+                    </div>
+                    {createKey.isError ? (
+                      <p className="text-sm text-red-600" role="alert">
+                        {createKey.error instanceof Error
+                          ? createKey.error.message
+                          : "Error"}
+                      </p>
+                    ) : null}
+
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Key</TableHead>
+                          <TableHead>Analyses</TableHead>
+                          <TableHead>Last used</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {usageQ.data.apiKeys.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-zinc-500">
+                              No keys yet. Create one for scripts or CI calling the API.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          usageQ.data.apiKeys.map((k) => (
+                            <TableRow key={k.id}>
+                              <TableCell className="font-mono text-xs">
+                                {k.name}{" "}
+                                <span className="text-zinc-500">({k.prefix})</span>
+                                {k.revokedAt ? (
+                                  <Badge variant="secondary" className="ml-2">
+                                    Revoked
+                                  </Badge>
+                                ) : null}
+                              </TableCell>
+                              <TableCell className="tabular-nums">{k.analysisCount}</TableCell>
+                              <TableCell className="text-xs text-zinc-600 dark:text-zinc-400">
+                                {k.lastUsedAt
+                                  ? new Date(k.lastUsedAt).toLocaleString()
+                                  : "—"}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {!k.revokedAt ? (
+                                  <Button
+                                    type="button"
+                                    variant="link"
+                                    size="sm"
+                                    className="text-red-600"
+                                    disabled={revokeKey.isPending}
+                                    onClick={() => {
+                                      if (
+                                        confirm(
+                                          "Revoke this key? API clients using it will get 401.",
+                                        )
+                                      ) {
+                                        revokeKey.mutate(k.id);
+                                      }
+                                    }}
+                                  >
+                                    Revoke
+                                  </Button>
+                                ) : (
+                                  "—"
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+
+        {sessionStatus === "unauthenticated" && dbReady ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/api/auth/signin" className="font-medium text-emerald-700 underline dark:text-emerald-400">
+              Sign in
+            </Link>{" "}
+            to see usage and API keys. The runs table below lists all stored analyses on this instance.
+          </p>
+        ) : null}
 
         <div className="grid gap-8 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
           <aside className="space-y-6">
@@ -194,7 +470,7 @@ export default function DashboardPage() {
                 <CardHeader>
                   <CardTitle className="text-base">Score trail</CardTitle>
                   <CardDescription>
-                    Recent trust scores per repo (oldest → newest in each line).
+                    From the current table filter (oldest → newest in each line).
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -217,10 +493,34 @@ export default function DashboardPage() {
                 <div>
                   <CardTitle className="text-lg">Runs</CardTitle>
                   <CardDescription>
-                    Zustand holds the filter; React Query refetches when it changes.
+                    {sessionStatus === "authenticated"
+                      ? effectiveListScope === "mine"
+                        ? "Analyses started while you were signed in or with your API keys."
+                        : "All analyses stored in this database."
+                      : "All analyses stored in this database."}
                   </CardDescription>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {sessionStatus === "authenticated" ? (
+                    <>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={listScope === "mine" ? "default" : "outline"}
+                        onClick={() => setListScope("mine")}
+                      >
+                        My runs
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={listScope === "all" ? "default" : "outline"}
+                        onClick={() => setListScope("all")}
+                      >
+                        All runs
+                      </Button>
+                    </>
+                  ) : null}
                   {(
                     [
                       "all",
@@ -236,7 +536,7 @@ export default function DashboardPage() {
                       variant={verdictFilter === v ? "default" : "outline"}
                       onClick={() => setVerdictFilter(v)}
                     >
-                      {v === "all" ? "All" : v}
+                      {v === "all" ? "Verdict: all" : v}
                     </Button>
                   ))}
                 </div>
@@ -254,7 +554,7 @@ export default function DashboardPage() {
                     <code className="rounded bg-zinc-200 px-1 py-0.5 font-mono text-xs dark:bg-zinc-800">
                       npm run db:push
                     </code>{" "}
-                    to list saved analyses here. The banner at the top explains the steps.
+                    to list saved analyses here.
                   </p>
                 ) : q.isPending ? (
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading…</p>
@@ -264,11 +564,8 @@ export default function DashboardPage() {
                   </p>
                 ) : !q.data?.length ? (
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    No analyses yet. Run one from the home page (requires{" "}
-                    <code className="rounded bg-zinc-200 px-1 py-0.5 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
-                      DATABASE_URL
-                    </code>
-                    ).
+                    No analyses in this view. Run one from the home page while signed in to populate
+                    &quot;My runs&quot;, or switch to &quot;All runs&quot;.
                   </p>
                 ) : (
                   <Table>
