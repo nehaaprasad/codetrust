@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { runPreparedAnalyze } from "@/lib/analysis/runPreparedAnalyze";
 import { resolveAnalyzeInput } from "@/lib/analysis/resolveAnalyzeInput";
+import { validateApiKeyBearer } from "@/lib/apiKeys";
 import { addAnalyzeJob } from "@/lib/queue/analyzeQueue";
 import { analyzeBodyToJobData } from "@/lib/queue/jobTypes";
 import { isAsyncAnalysisEnabled } from "@/lib/queue/redisConnection";
@@ -28,8 +30,37 @@ function httpStatusForError(message: string): number {
 }
 
 export async function POST(req: Request) {
-  const ip = clientIpFromRequest(req);
-  const rl = checkRateLimit(`analyze:${ip}`);
+  const authHeader = req.headers.get("authorization");
+  const xApiKey = req.headers.get("x-api-key");
+  const apiKeyPlain =
+    authHeader?.startsWith("Bearer ") && authHeader.slice(7).trim().length > 0
+      ? authHeader.slice(7).trim()
+      : xApiKey?.trim() || null;
+
+  let userId: string | null = null;
+  let apiKeyId: string | null = null;
+
+  if (apiKeyPlain) {
+    const v = await validateApiKeyBearer(apiKeyPlain);
+    if (!v) {
+      return NextResponse.json(
+        { error: "Invalid or revoked API key." },
+        { status: 401 },
+      );
+    }
+    userId = v.userId;
+    apiKeyId = v.id;
+  } else {
+    const session = await auth();
+    if (session?.user?.id) {
+      userId = session.user.id;
+    }
+  }
+
+  const rateKey = apiKeyId
+    ? `analyze:apikey:${apiKeyId}`
+    : `analyze:${clientIpFromRequest(req)}`;
+  const rl = checkRateLimit(rateKey);
   if (!rl.ok) {
     return NextResponse.json(
       {
@@ -57,7 +88,7 @@ export async function POST(req: Request) {
   const data = parsed.data;
 
   if (data.workspaceId) {
-    const ws = await assertWorkspaceMember(data.workspaceId);
+    const ws = await assertWorkspaceMember(data.workspaceId, userId);
     if (!ws.ok) {
       return NextResponse.json(
         { error: ws.message },
@@ -66,8 +97,10 @@ export async function POST(req: Request) {
     }
   }
 
+  const authCtx = { userId, apiKeyId };
+
   if (isAsyncAnalysisEnabled()) {
-    const jobData = analyzeBodyToJobData(data);
+    const jobData = analyzeBodyToJobData(data, authCtx);
     if (!jobData) {
       return NextResponse.json({ error: "Nothing to analyze." }, { status: 400 });
     }
@@ -95,7 +128,7 @@ export async function POST(req: Request) {
         { status: 413 },
       );
     }
-    const out = await runPreparedAnalyze(prepared);
+    const out = await runPreparedAnalyze(prepared, undefined, authCtx);
     return NextResponse.json({ ...out, async: false });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Analysis failed.";
