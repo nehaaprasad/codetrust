@@ -1,13 +1,13 @@
-import { createGitHubClient } from "./client";
+import { createGitHubClientForUser } from "./client";
 import type { GitHubRepo } from "./types";
 
 const MAX_REPOS = 100;
 
 /**
- * Fetch repositories for the authenticated user
+ * Fetch repositories for the signed-in user (OAuth access token from NextAuth).
  */
-export async function fetchUserRepos(): Promise<GitHubRepo[]> {
-  const octokit = createGitHubClient();
+export async function fetchUserRepos(accessToken: string): Promise<GitHubRepo[]> {
+  const octokit = createGitHubClientForUser(accessToken);
 
   const { data } = await octokit.repos.listForAuthenticatedUser({
     sort: "updated",
