@@ -169,12 +169,16 @@ Run the worker in a second terminal while using the app; otherwise queued jobs s
 
 | Method | Path | Notes |
 |--------|------|--------|
-| `POST` | `/api/analyze` | Body: `{ "code" }` and/or `{ "prUrl" }` and/or `{ "files": [...] }`. Sync: **200** with full result. Async (Redis): **202** + `{ "jobId" }`. |
+| `POST` | `/api/analyze` | Body: `{ "code" }` and/or `{ "prUrl" }` and/or `{ "files": [...] }`. Optional auth: `Authorization: Bearer <api_key>` or `X-API-Key` (create keys on the **Dashboard**). Browser sessions attach your GitHub user id when signed in. Sync: **200** with full result. Async (Redis): **202** + `{ "jobId" }`. |
 | `GET` | `/api/jobs/:jobId` | Job state: `waiting` / `active` / `completed` / `failed`; `result` when completed |
 | `GET` | `/api/analysis/:id` | Stored row; includes `prCommentUrl` when a comment was posted; needs DB |
 | `POST` | `/api/analysis/:id/rerun` | Re-runs from stored input; needs DB |
 | `GET` | `/api/health` | Setup status: database / Redis / async / flags (no secrets exposed) |
-| `GET` | `/api/analyses` | Recent saved analyses (`limit`, optional `decision=SAFE\|RISKY\|BLOCK`); needs DB |
+| `GET` | `/api/analyses` | Recent saved analyses (`limit`, optional `decision=…`, optional `scope=mine` when signed in); needs DB |
+| `GET` | `/api/dashboard/usage` | Signed-in: totals, last 7 days, verdict counts, API keys with usage; needs DB |
+| `GET` | `/api/api-keys` | List your API keys (metadata only); needs DB + session |
+| `POST` | `/api/api-keys` | Create key; response includes `key` **once**; needs DB + session |
+| `DELETE` | `/api/api-keys/:id` | Revoke key; needs DB + session |
 | `POST` | `/api/github/webhook` | GitHub **pull_request** events: verifies `X-Hub-Signature-256` with `GITHUB_WEBHOOK_SECRET`, enqueues PR analysis when `REDIS_URL` + async worker are available |
 
 ### GitHub webhook (v1)
