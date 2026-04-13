@@ -196,17 +196,20 @@ export default function DashboardPage() {
     <div className="flex min-h-full flex-1 flex-col bg-zinc-50 text-zinc-900 dark:bg-transparent dark:text-zinc-100">
       <AppNav />
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-10">
-        <header className="space-y-2">
-          <p className="text-sm font-medium uppercase tracking-wide text-sky-700 dark:text-sky-400">
-            AI Code Trust
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-12">
+        <header className="space-y-6 text-left">
+          <p className="text-sm font-normal tracking-[-0.01em] text-zinc-500 dark:text-zinc-500">
+            ai code trust
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Developer dashboard
+          <h1 className="max-w-[20ch] font-sans text-[2.375rem] font-light leading-[1.12] tracking-[-0.035em] sm:text-5xl sm:leading-[1.1] sm:tracking-[-0.04em]">
+            <span className="block text-zinc-900 dark:text-[#fcfcf0]">developer</span>
+            <span className="mt-1 block font-extralight text-zinc-500 dark:text-[#a1a1a1]">
+              dashboard
+            </span>
           </h1>
-          <p className="max-w-2xl text-zinc-600 dark:text-zinc-400">
+          <p className="max-w-2xl text-base leading-relaxed text-zinc-600 dark:text-zinc-400 sm:text-lg">
             Usage for your account, API keys for programmatic{" "}
-            <code className="rounded bg-zinc-200 px-1 py-0.5 font-mono text-xs dark:bg-zinc-800">
+            <code className="rounded bg-zinc-200 px-1.5 py-0.5 font-mono text-sm dark:bg-zinc-800">
               POST /api/analyze
             </code>
             , and saved runs.
@@ -224,43 +227,53 @@ export default function DashboardPage() {
             ) : usageQ.data ? (
               <>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <Card>
+                  <Card className="overflow-hidden rounded-xl border-zinc-200/90 bg-white/90 shadow-lg shadow-zinc-900/5 backdrop-blur-sm dark:border-zinc-700/60 dark:bg-zinc-950/50 dark:shadow-[0_0_0_1px_rgba(63,63,70,0.4),0_16px_48px_-20px_rgba(0,0,0,0.4)]">
                     <CardHeader className="pb-2">
-                      <CardDescription>Your analyses (all time)</CardDescription>
-                      <CardTitle className="text-3xl tabular-nums">
+                      <CardDescription className="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        Your analyses (all time)
+                      </CardDescription>
+                      <CardTitle className="text-4xl font-bold tabular-nums tracking-tight">
                         {usageQ.data.totalAnalyses}
                       </CardTitle>
                     </CardHeader>
                   </Card>
-                  <Card>
+                  <Card className="overflow-hidden rounded-xl border-zinc-200/90 bg-white/90 shadow-lg shadow-zinc-900/5 backdrop-blur-sm dark:border-zinc-700/60 dark:bg-zinc-950/50 dark:shadow-[0_0_0_1px_rgba(63,63,70,0.4),0_16px_48px_-20px_rgba(0,0,0,0.4)]">
                     <CardHeader className="pb-2">
-                      <CardDescription>Last 7 days</CardDescription>
-                      <CardTitle className="text-3xl tabular-nums">
+                      <CardDescription className="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        Last 7 days
+                      </CardDescription>
+                      <CardTitle className="text-4xl font-bold tabular-nums tracking-tight">
                         {usageQ.data.last7Days}
                       </CardTitle>
                     </CardHeader>
                   </Card>
-                  <Card>
+                  <Card className="overflow-hidden rounded-xl border-zinc-200/90 bg-white/90 shadow-lg shadow-zinc-900/5 backdrop-blur-sm dark:border-zinc-700/60 dark:bg-zinc-950/50 dark:shadow-[0_0_0_1px_rgba(63,63,70,0.4),0_16px_48px_-20px_rgba(0,0,0,0.4)]">
                     <CardHeader className="pb-2">
-                      <CardDescription>SAFE</CardDescription>
-                      <CardTitle className="text-3xl tabular-nums">
+                      <CardDescription className="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        SAFE
+                      </CardDescription>
+                      <CardTitle className="text-4xl font-bold tabular-nums tracking-tight">
                         {usageQ.data.byDecision.SAFE}
                       </CardTitle>
                     </CardHeader>
                   </Card>
-                  <Card>
+                  <Card className="overflow-hidden rounded-xl border-zinc-200/90 bg-white/90 shadow-lg shadow-zinc-900/5 backdrop-blur-sm dark:border-zinc-700/60 dark:bg-zinc-950/50 dark:shadow-[0_0_0_1px_rgba(63,63,70,0.4),0_16px_48px_-20px_rgba(0,0,0,0.4)]">
                     <CardHeader className="pb-2">
-                      <CardDescription>RISKY / BLOCK</CardDescription>
-                      <CardTitle className="text-3xl tabular-nums">
+                      <CardDescription className="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        RISKY / BLOCK
+                      </CardDescription>
+                      <CardTitle className="text-4xl font-bold tabular-nums tracking-tight">
                         {usageQ.data.byDecision.RISKY + usageQ.data.byDecision.BLOCK}
                       </CardTitle>
                     </CardHeader>
                   </Card>
                 </div>
 
-                <Card>
+                <Card className="overflow-hidden rounded-2xl border-zinc-200/90 dark:border-zinc-700/55">
                   <CardHeader>
-                    <CardTitle className="text-lg">API keys</CardTitle>
+                    <CardTitle className="text-lg font-semibold tracking-[-0.02em]">
+                      API keys
+                    </CardTitle>
                     <CardDescription>
                       Use{" "}
                       <code className="rounded bg-zinc-100 px-1 font-mono text-xs dark:bg-zinc-800">
@@ -408,7 +421,7 @@ export default function DashboardPage() {
 
         {sessionStatus === "unauthenticated" && dbReady ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            <Link href="/api/auth/signin" className="font-medium text-sky-700 underline dark:text-sky-400">
+            <Link href="/api/auth/signin" className="font-medium text-zinc-700 underline dark:text-zinc-300">
               Sign in
             </Link>{" "}
             to see usage and API keys. The runs table below lists all stored analyses on this instance.
@@ -418,14 +431,16 @@ export default function DashboardPage() {
         <div className="grid gap-8 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
           <aside className="space-y-6">
             {dbReady && sessionStatus === "authenticated" ? (
-              <Card>
+              <Card className="overflow-hidden rounded-2xl border-zinc-200/90 dark:border-zinc-700/55">
                 <CardHeader>
-                  <CardTitle className="text-base">Your repositories</CardTitle>
+                  <CardTitle className="text-base font-semibold tracking-[-0.02em]">
+                    Your repositories
+                  </CardTitle>
                   <CardDescription>
                     From GitHub OAuth.{" "}
                     <Link
                       href="/connect"
-                      className="font-medium text-sky-700 underline dark:text-sky-400"
+                      className="font-medium text-zinc-700 underline dark:text-zinc-300"
                     >
                       Connect
                     </Link>{" "}
@@ -446,20 +461,25 @@ export default function DashboardPage() {
                       No repositories returned.
                     </p>
                   ) : (
-                    <ul className="max-h-64 space-y-1 overflow-y-auto text-sm">
-                      {reposQ.data.slice(0, 20).map((r) => (
-                        <li key={r.fullName}>
-                          <a
-                            href={r.htmlUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sky-700 hover:underline dark:text-sky-400"
-                          >
-                            {r.fullName}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="overflow-hidden rounded-lg border border-zinc-200/90 dark:border-zinc-800/90">
+                      <div className="border-b border-zinc-200/90 bg-zinc-50/95 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-400">
+                        Repository
+                      </div>
+                      <ul className="max-h-64 divide-y divide-zinc-200 overflow-y-auto text-sm dark:divide-zinc-800/80">
+                        {reposQ.data.slice(0, 20).map((r) => (
+                          <li key={r.fullName}>
+                            <a
+                              href={r.htmlUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block px-3 py-2.5 font-medium text-zinc-800 transition-colors hover:bg-zinc-50 hover:text-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-800/50 dark:hover:text-white"
+                            >
+                              {r.fullName}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -563,10 +583,10 @@ export default function DashboardPage() {
                     {q.error instanceof Error ? q.error.message : "Error"}
                   </p>
                 ) : !q.data?.length ? (
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  <div className="rounded-xl border border-dashed border-zinc-300/90 bg-zinc-50/50 px-4 py-10 text-center text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/30 dark:text-zinc-400">
                     No analyses in this view. Run one from the home page while signed in to populate
                     &quot;My runs&quot;, or switch to &quot;All runs&quot;.
-                  </p>
+                  </div>
                 ) : (
                   <Table>
                     <TableHeader>
