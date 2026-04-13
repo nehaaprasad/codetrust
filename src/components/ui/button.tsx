@@ -4,16 +4,16 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/45 dark:focus-visible:ring-sky-400/40 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         default:
-          "bg-emerald-600 text-white shadow hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500",
+          "bg-sky-600 text-white shadow-md shadow-sky-900/15 hover:bg-sky-500 dark:bg-sky-500 dark:shadow-[0_0_32px_-6px_rgba(56,189,248,0.55)] dark:hover:bg-sky-400",
         outline:
-          "border border-zinc-300 bg-white shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:bg-zinc-900",
-        ghost: "hover:bg-zinc-100 dark:hover:bg-zinc-800",
-        link: "text-emerald-700 underline-offset-4 hover:underline dark:text-emerald-400",
+          "border border-zinc-300/90 bg-white/90 shadow-sm backdrop-blur-sm hover:bg-zinc-50 dark:border-zinc-600/80 dark:bg-zinc-950/60 dark:hover:bg-zinc-900/90",
+        ghost: "hover:bg-zinc-100 dark:hover:bg-zinc-800/80",
+        link: "text-sky-700 underline-offset-4 hover:text-sky-600 hover:underline dark:text-sky-400 dark:hover:text-sky-300",
       },
       size: {
         default: "h-10 px-4 py-2",
