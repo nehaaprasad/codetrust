@@ -17,6 +17,8 @@ export async function saveAnalysis(
     prUrl?: string | null;
     prNumber?: number | null;
     workspaceId?: string | null;
+    userId?: string | null;
+    apiKeyId?: string | null;
   },
 ) {
   const prisma = getPrisma();
@@ -57,6 +59,13 @@ export async function saveAnalysis(
 
   if (options?.workspaceId) {
     data.workspace = { connect: { id: options.workspaceId } };
+  }
+
+  if (options?.userId) {
+    data.userId = options.userId;
+  }
+  if (options?.apiKeyId) {
+    data.apiKey = { connect: { id: options.apiKeyId } };
   }
 
   return prisma.analysis.create({ data });
