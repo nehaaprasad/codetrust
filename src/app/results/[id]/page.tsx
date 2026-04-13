@@ -29,7 +29,7 @@ function verdictBadgeVariant(
 }
 
 function verdictAccentBorder(d: string): string {
-  if (d === "SAFE") return "border-l-sky-500 dark:border-l-sky-400";
+  if (d === "SAFE") return "border-l-zinc-400 dark:border-l-zinc-500";
   if (d === "RISKY") return "border-l-amber-500 dark:border-l-amber-400";
   if (d === "BLOCK") return "border-l-red-500 dark:border-l-red-400";
   return "border-l-zinc-300 dark:border-l-zinc-600";
@@ -366,7 +366,7 @@ export default function ResultPage() {
                     className={cn(
                       "mt-1 text-3xl font-semibold tabular-nums",
                       data.score - data.previousScore >= 0
-                        ? "text-sky-700 dark:text-sky-400"
+                        ? "text-zinc-600 dark:text-zinc-300"
                         : "text-red-600 dark:text-red-400",
                     )}
                   >
@@ -446,7 +446,7 @@ export default function ResultPage() {
                       className={cn(
                         "shrink-0 tabular-nums text-sm font-semibold",
                         row.score >= 85
-                          ? "text-sky-700 dark:text-sky-400"
+                          ? "text-zinc-600 dark:text-zinc-300"
                           : row.score >= 60
                             ? "text-amber-700 dark:text-amber-400"
                             : "text-red-600 dark:text-red-400",
