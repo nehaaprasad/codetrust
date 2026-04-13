@@ -239,6 +239,14 @@ export default function ResultPage() {
         ) : null}
 
         <RerunButton analysisId={id} />
+
+        {data.sources.some((s) => s.url?.includes("/pull/")) ? (
+          <Link href={`/results/${id}/diff`}>
+            <Button type="button" variant="outline">
+              View changes
+            </Button>
+          </Link>
+        ) : null}
       </main>
     </Shell>
   );
