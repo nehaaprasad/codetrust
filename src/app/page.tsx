@@ -165,41 +165,46 @@ function HomeContent() {
       <AppNav />
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-10 px-6 py-16">
-        <header className="space-y-3">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-sky-700 dark:text-sky-400/90">
-            AI Code Trust
+        <header className="space-y-6 text-left">
+          <p className="text-sm font-normal tracking-[-0.01em] text-zinc-500 dark:text-zinc-500">
+            ai code trust
           </p>
-          <h1 className="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-600 bg-clip-text text-3xl font-semibold tracking-tight text-transparent dark:from-white dark:via-zinc-100 dark:to-zinc-400 sm:text-4xl">
-            Decide if code is safe to ship
+          <h1 className="max-w-[22ch] font-sans text-[2.375rem] font-light leading-[1.12] tracking-[-0.035em] sm:text-5xl sm:leading-[1.1] sm:tracking-[-0.04em]">
+            <span className="block text-zinc-900 dark:text-[#fcfcf0]">
+              decide if code
+            </span>
+            <span className="mt-1 block font-extralight text-zinc-500 dark:text-[#a1a1a1]">
+              is safe to ship
+            </span>
           </h1>
-          <p className="max-w-2xl text-lg leading-relaxed text-zinc-600 dark:text-zinc-400">
+          <p className="max-w-xl text-base leading-relaxed text-zinc-600 dark:text-zinc-400 sm:text-lg">
             Paste a snippet or analyze a GitHub pull request. You get a trust score,
             a clear verdict, and the highest-impact issues first — not a wall of
             noise.
           </p>
-          <div className="flex flex-wrap gap-2 pt-2">
+          <div className="flex flex-wrap gap-3 pt-1">
             {session ? (
-              <Button type="button" variant="outline" size="sm" asChild>
+              <Button type="button" size="lg" asChild>
                 <Link href="/connect">Connect repositories & pick a PR</Link>
               </Button>
             ) : (
-              <Button type="button" variant="outline" size="sm" asChild>
+              <Button type="button" size="lg" asChild>
                 <Link href="/connect">Sign in to browse repos & PRs</Link>
               </Button>
             )}
           </div>
         </header>
 
-        <Card className="overflow-hidden rounded-2xl border-zinc-200/90 bg-white/90 shadow-lg shadow-zinc-900/5 backdrop-blur-sm dark:border-zinc-700/60 dark:bg-zinc-950/50 dark:shadow-[0_0_0_1px_rgba(63,63,70,0.4),0_24px_64px_-28px_rgba(0,0,0,0.55)]">
-          <CardHeader>
-            <CardTitle className="text-xl">Run analysis</CardTitle>
-            <CardDescription>
+        <Card className="overflow-hidden rounded-2xl border-zinc-200/90 bg-white/90 shadow-xl shadow-zinc-900/5 backdrop-blur-sm dark:border-zinc-700/60 dark:bg-zinc-950/50 dark:shadow-[0_0_0_1px_rgba(63,63,70,0.4),0_24px_64px_-28px_rgba(0,0,0,0.55)]">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-xl font-semibold">Run analysis</CardTitle>
+            <CardDescription className="text-base">
               PR analysis needs a server{" "}
-              <code className="rounded bg-zinc-100 px-1 py-0.5 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
+              <code className="rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
                 GITHUB_TOKEN
               </code>{" "}
               to fetch files. Use{" "}
-              <Link href="/connect" className="font-medium text-sky-700 underline decoration-sky-300/70 underline-offset-2 transition-colors hover:text-sky-800 dark:text-sky-400 dark:decoration-sky-500/50 dark:hover:text-sky-300">
+              <Link href="/connect" className="font-medium text-zinc-700 underline decoration-zinc-400/60 underline-offset-2 transition-colors hover:text-zinc-900 dark:text-zinc-300 dark:decoration-zinc-500/50 dark:hover:text-white">
                 Connect
               </Link>{" "}
               to choose a PR, or paste a PR URL below.
@@ -332,7 +337,7 @@ function ResultSummary({ data }: { data: AnalyzeResponse }) {
             href={data.prCommentUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-medium text-sky-700 underline decoration-sky-300/70 underline-offset-2 transition-colors hover:text-sky-800 dark:text-sky-400 dark:decoration-sky-500/50 dark:hover:text-sky-300"
+            className="font-medium text-zinc-700 underline decoration-zinc-400/60 underline-offset-2 transition-colors hover:text-zinc-900 dark:text-zinc-300 dark:decoration-zinc-500/50 dark:hover:text-white"
           >
             View comment on GitHub
           </a>
