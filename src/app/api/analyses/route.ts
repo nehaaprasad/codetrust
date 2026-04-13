@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { canonicalRepoUrl } from "@/lib/github/repoUrl";
 import { getPrisma, isDatabaseConfigured } from "@/lib/db";
 
@@ -16,6 +17,7 @@ export async function GET(req: Request) {
   const limitRaw = url.searchParams.get("limit");
   const decision = url.searchParams.get("decision")?.trim();
   const repoUrlParam = url.searchParams.get("repoUrl")?.trim();
+  const scope = url.searchParams.get("scope")?.trim();
 
   let limit = 30;
   if (limitRaw) {
@@ -37,10 +39,21 @@ export async function GET(req: Request) {
   const where: {
     decision?: string;
     repoUrl?: string;
+    userId?: string;
   } = {};
   if (decision) where.decision = decision;
   if (repoUrlParam) {
     where.repoUrl = canonicalRepoUrl(repoUrlParam);
+  }
+  if (scope === "mine") {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Sign in to list your analyses." },
+        { status: 401 },
+      );
+    }
+    where.userId = session.user.id;
   }
 
   try {
