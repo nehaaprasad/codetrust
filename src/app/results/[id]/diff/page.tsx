@@ -99,7 +99,7 @@ export default function DiffPage() {
           <p className="text-sm text-red-600">
             {diffQ.error instanceof Error ? diffQ.error.message : "Error"}
           </p>
-          <Link href={`/results/${id}`} className="text-sm font-medium text-sky-700 underline dark:text-sky-400">
+          <Link href={`/results/${id}`} className="text-sm font-medium text-zinc-700 underline dark:text-zinc-300">
             Back to results
           </Link>
         </div>
@@ -116,13 +116,13 @@ export default function DiffPage() {
         <header className="mb-4 flex items-center gap-4">
           <Link
             href={`/results/${id}`}
-            className="text-sm font-medium text-sky-700 hover:underline dark:text-sky-400"
+            className="text-sm font-medium text-zinc-700 hover:underline dark:text-zinc-300"
           >
             ← Back to results
           </Link>
           <span className="h-4 w-px bg-zinc-300 dark:bg-zinc-700" />
           <div className="text-sm text-zinc-600 dark:text-zinc-400">
-            <span className="text-sky-600 dark:text-sky-400">
+            <span className="text-zinc-500 dark:text-zinc-400">
               +{diff.totalAdditions}
             </span>
             {" "}
