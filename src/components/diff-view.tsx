@@ -40,14 +40,14 @@ export function DiffViewer({ files, issues = [] }: DiffViewerProps) {
                 onClick={() => setSelectedFile(file.path)}
                 className={`w-full truncate rounded px-2 py-1.5 text-left text-sm ${
                   selectedFile === file.path
-                    ? "bg-sky-100 font-medium text-sky-900 dark:bg-sky-500/15 dark:text-sky-100 dark:ring-1 dark:ring-sky-400/35"
+                    ? "bg-zinc-200 font-medium text-zinc-950 dark:bg-white/[0.12] dark:text-zinc-100 dark:ring-1 dark:ring-white/12"
                     : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 }`}
               >
                 <span
                   className={`mr-2 inline-block h-4 w-4 rounded text-center text-xs leading-4 ${
                     file.status === "added"
-                      ? "bg-sky-200 text-sky-900 dark:bg-sky-500/25 dark:text-sky-200"
+                      ? "bg-zinc-300 text-zinc-950 dark:bg-zinc-600/50 dark:text-zinc-100"
                       : file.status === "deleted"
                         ? "bg-red-200 text-red-700 dark:bg-red-800 dark:text-red-300"
                         : "bg-yellow-200 text-yellow-700 dark:bg-yellow-800 dark:text-yellow-300"
@@ -62,7 +62,7 @@ export function DiffViewer({ files, issues = [] }: DiffViewerProps) {
                 {file.path.split("/").pop()}
               </button>
               <div className="ml-6 px-2 text-xs text-zinc-500">
-                <span className="text-sky-600 dark:text-sky-400">
+                <span className="text-zinc-500 dark:text-zinc-400">
                   +{file.additions}
                 </span>
                 {" "}
@@ -99,7 +99,7 @@ export function DiffViewer({ files, issues = [] }: DiffViewerProps) {
                         key={`${hi}-${li}`}
                         className={`flex ${
                           line.type === "added"
-                            ? "bg-sky-50/90 dark:bg-sky-500/10"
+                            ? "bg-zinc-100/90 dark:bg-zinc-800/35"
                             : line.type === "deleted"
                               ? "bg-red-50 dark:bg-red-950/30"
                               : ""
@@ -120,7 +120,7 @@ export function DiffViewer({ files, issues = [] }: DiffViewerProps) {
                         <span
                           className={`flex-1 whitespace-pre-wrap break-all px-2 ${
                             line.type === "added"
-                              ? "text-sky-800 dark:text-sky-200"
+                              ? "text-zinc-800 dark:text-zinc-200"
                               : line.type === "deleted"
                                 ? "text-red-700 dark:text-red-300"
                                 : "text-zinc-600 dark:text-zinc-400"
