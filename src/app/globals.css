@@ -177,6 +177,24 @@
   mask-image: radial-gradient(ellipse 94% 90% at 50% 45%, black 18%, transparent 78%);
 }
 
+/* Stronger pattern visibility only — does not change .landing-band-subtle background */
+.landing-band-subtle.landing-band-pattern-strong::before {
+  opacity: 0.56;
+  mask-image: radial-gradient(ellipse 98% 94% at 50% 45%, black 28%, black 76%, transparent 92%);
+}
+
+.landing-band-subtle.landing-band-pattern-strong::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle at 1px 1px, rgba(105, 78, 56, 0.1) 1px, transparent 0);
+  background-size: 20px 20px;
+  opacity: 0.4;
+  mask-image: radial-gradient(ellipse 98% 96% at 50% 50%, black 48%, transparent 88%);
+}
+
 /* How it works — same motif, slightly brighter paper */
 .landing-band-how {
   position: relative;
@@ -210,6 +228,37 @@
   background-position: 50% 0;
   opacity: 0.2;
   mask-image: radial-gradient(ellipse 95% 58% at 50% 0%, black 0%, transparent 68%);
+}
+
+/* Integrations — dashed grid + nodes (warm brown mesh, readable like a product diagram) */
+.landing-band-integrations {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  border-top: 1px solid rgba(160, 120, 90, 0.11);
+  border-bottom: 1px solid rgba(160, 120, 90, 0.09);
+  background: linear-gradient(165deg, #fdfcfa 0%, #f7f1ea 40%, #eee3d6 100%);
+}
+
+.landing-band-integrations::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("/landing-integrations-grid.svg");
+  background-size: 80px 80px;
+  opacity: 0.62;
+  mask-image: radial-gradient(ellipse 95% 90% at 50% 48%, black 18%, black 55%, transparent 82%);
+}
+
+.landing-band-integrations::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 130% 70% at 50% -5%, rgba(255, 252, 248, 0.55), transparent 48%);
 }
 
 /* Trust score band: light brown paper + project pattern (diff / verdict / branch) */
