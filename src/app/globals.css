@@ -134,7 +134,7 @@
 .landing-noise {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   mix-blend-mode: multiply;
-  opacity: 0.35;
+  opacity: 0.28;
 }
 
 .landing-hero-glow {
@@ -309,10 +309,13 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-image: radial-gradient(circle at 1px 1px, rgba(120, 92, 68, 0.05) 1px, transparent 0);
-  background-size: 24px 24px;
-  opacity: 0.38;
-  mask-image: radial-gradient(ellipse 92% 88% at 50% 48%, black 28%, transparent 88%);
+  background-image:
+    url("/landing-code-pattern.svg"),
+    radial-gradient(circle at 1px 1px, rgba(120, 92, 68, 0.05) 1px, transparent 0);
+  background-size: 104px 104px, 24px 24px;
+  background-position: 50% 45%, 0 0;
+  opacity: 0.32;
+  mask-image: radial-gradient(ellipse 92% 88% at 50% 50%, black 26%, transparent 90%);
 }
 
 /* Video band — subtle mesh + soft paper so section does not feel plain */
