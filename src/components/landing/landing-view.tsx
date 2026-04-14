@@ -30,6 +30,29 @@ function GitHubIcon({ className }: { className?: string }) {
   );
 }
 
+function LinkedInIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.07 2.07 0 01-2.062-2.065 2.063 2.063 0 114.125 0 2.07 2.07 0 01-2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+    </svg>
+  );
+}
+
+function XIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+/** Replace with your public profile or org URLs */
+const FOOTER_SOCIAL = {
+  github: "https://github.com",
+  linkedin: "https://www.linkedin.com",
+  x: "https://x.com",
+} as const;
+
 function SectionEyebrow({ children }: { children: React.ReactNode }) {
   return (
     <p className="mb-2.5 font-mono text-[9px] font-medium uppercase tracking-[0.24em] text-stone-500">
@@ -582,8 +605,8 @@ export function LandingView() {
         </section>
 
         {/* Before / After — type-forward */}
-        <section className="border-t border-amber-900/10 py-14 sm:py-16">
-          <div className="mx-auto max-w-[880px] px-5 text-center">
+        <section className="landing-band-proof py-10 sm:py-12">
+          <div className="relative z-[1] mx-auto max-w-[880px] px-5 text-center">
             <SectionEyebrow>Proof</SectionEyebrow>
             <h2 className="text-balance text-[clamp(1.45rem,2.5vw,2.1rem)] font-semibold tracking-[-0.035em] text-stone-900">
               Score up. Verdict follows.
@@ -613,35 +636,83 @@ export function LandingView() {
         </section>
 
         {/* Final CTA — single focal column */}
-        <section className="relative border-t border-amber-900/10 bg-gradient-to-b from-amber-950/[0.06] via-[#f0e4d8] to-[#f3e9de] py-16 sm:py-20">
-          <div className="mx-auto max-w-[560px] px-5 text-center">
-            <h2 className="text-balance text-[clamp(1.45rem,2.7vw,2.1rem)] font-semibold leading-[1.12] tracking-[-0.04em] text-stone-900">
-              Merge when the verdict says you can.
+        <section className="landing-band-final-cta">
+          <div className="relative z-[1] mx-auto max-w-[min(100%,42rem)] px-6 text-center sm:px-8">
+            <p className="mb-2 font-mono text-[10.5px] font-medium uppercase tracking-[0.2em] text-stone-500 sm:text-[11px]">
+              Get started
+            </p>
+            <h2
+              className="text-balance text-pretty text-[clamp(1.75rem,3.15vw,2.55rem)] font-light leading-[1.1] tracking-[-0.02em] antialiased [font-family:var(--font-hero-serif),ui-serif,Georgia,serif]"
+              style={{ fontFeatureSettings: '"liga" 1, "kern" 1' }}
+            >
+              <span className="text-stone-900">Merge when the verdict says </span>
+              <span className="text-[#9a3412]">you can.</span>
             </h2>
-            <p className="mt-3 text-[14px] text-stone-600">
+            <p className="mt-3 text-[15px] leading-relaxed text-stone-600 sm:text-[16px]">
               One trust score. Safe, Risky, or Block — for teams that ship for real.
+            </p>
+            <p className="mt-3 text-[13.5px] leading-relaxed text-stone-500 sm:text-[14px]">
+              GitHub sign-in · Private repos · Same score on every PR and in CI
             </p>
             <Button
               type="button"
               size="lg"
-              className="mt-8 h-11 rounded-full border border-stone-800/10 bg-stone-900 px-10 text-[14px] font-semibold text-white hover:bg-stone-800"
+              className="mt-7 h-12 rounded-full border border-stone-800/10 bg-stone-900 px-12 text-[15px] font-semibold text-white hover:bg-stone-800 sm:text-[16px]"
               onClick={() => signIn("github")}
             >
-              <GitHubIcon className="size-3.5 text-white" />
+              <GitHubIcon className="size-4 text-white" />
               Connect GitHub
             </Button>
-            <p className="mt-7 font-mono text-[11px] text-stone-500">After sign-in — Analyze · Connect · Dashboard</p>
+            <p className="mt-6 font-mono text-[12px] text-stone-500 sm:text-[12.5px]">
+              After sign-in — Analyze · Connect · Dashboard
+            </p>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-amber-900/10 py-8">
-        <div className="mx-auto flex max-w-[1320px] flex-wrap items-center justify-between gap-4 px-5 text-[13px] text-stone-600">
-          <span className="flex items-center gap-2 font-medium text-stone-700">
-            <Shield className="size-3.5 text-stone-600" />
+      <footer className="border-t border-white/[0.08] bg-[#1c1d21] py-7 text-[13px]">
+        <div className="mx-auto flex max-w-[1320px] flex-col items-center justify-between gap-5 px-5 sm:flex-row sm:gap-4">
+          <span className="flex items-center gap-2 font-medium tracking-[-0.02em] text-stone-200">
+            <Shield className="size-4 text-stone-400" aria-hidden />
             AI Code Trust
           </span>
-          <span className="font-mono text-[11px]">© {new Date().getFullYear()}</span>
+          <div className="flex flex-wrap items-center justify-center gap-5 sm:gap-6">
+            <span className="font-mono text-[11px] tabular-nums text-stone-500">
+              © {new Date().getFullYear()}
+            </span>
+            <span className="hidden text-stone-600 sm:inline" aria-hidden>
+              |
+            </span>
+            <nav className="flex items-center gap-1" aria-label="Social links">
+              <a
+                href={FOOTER_SOCIAL.github}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-md p-2 text-stone-400 transition-colors hover:bg-white/[0.08] hover:text-stone-100"
+                aria-label="GitHub"
+              >
+                <GitHubIcon className="size-[18px]" />
+              </a>
+              <a
+                href={FOOTER_SOCIAL.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-md p-2 text-stone-400 transition-colors hover:bg-white/[0.08] hover:text-stone-100"
+                aria-label="LinkedIn"
+              >
+                <LinkedInIcon className="size-[18px]" />
+              </a>
+              <a
+                href={FOOTER_SOCIAL.x}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-md p-2 text-stone-400 transition-colors hover:bg-white/[0.08] hover:text-stone-100"
+                aria-label="X (Twitter)"
+              >
+                <XIcon className="size-[18px]" />
+              </a>
+            </nav>
+          </div>
         </div>
       </footer>
     </div>
