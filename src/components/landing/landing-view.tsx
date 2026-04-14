@@ -158,6 +158,15 @@ function HeroProductPanel() {
   );
 }
 
+/** Fake thread snippets for the “Noise” card — messy, unbounded feedback (not missing UI). */
+const differentiationNoiseLines = [
+  "LGTM — skimmed on mobile, didn’t walk every path.",
+  "nit: rename · also see design thread from Tuesday…",
+  "Can we defer? Tagging @infra for overlap with #882.",
+  "Same comment as last sprint — parking for later.",
+  "Any blocker or just merge?",
+];
+
 const dimensions = [
   { name: "Security", hint: "Secrets, injection, auth boundaries", icon: Lock },
   { name: "Logic", hint: "Control flow, edge cases, failure modes", icon: Braces },
@@ -465,7 +474,7 @@ export function LandingView() {
         </section>
 
         {/* Differentiation — contrast panel */}
-        <section className="landing-band-subtle py-14 sm:py-16">
+        <section className="landing-band-subtle landing-band-pattern-strong py-14 sm:py-16">
           <div className="relative z-[1] mx-auto max-w-[1320px] px-5">
             <div className="grid gap-10 lg:grid-cols-2 lg:items-center xl:gap-14">
               <div>
@@ -494,12 +503,16 @@ export function LandingView() {
               <div className="relative space-y-3">
                 <div className="rounded-2xl border border-stone-300/60 bg-stone-900/[0.04] p-5 opacity-80">
                   <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-stone-500">Noise</p>
-                  <div className="mt-3 space-y-1.5">
-                    {[100, 88, 76, 64, 52].map((w) => (
-                      <div key={w} className="h-1.5 rounded-full bg-stone-300/90" style={{ width: `${w}%` }} />
+                  <div className="mt-3 space-y-2 border-l border-stone-300/80 pl-3">
+                    {differentiationNoiseLines.map((line) => (
+                      <p key={line} className="text-[11px] leading-snug text-stone-600/95">
+                        {line}
+                      </p>
                     ))}
                   </div>
-                  <p className="mt-3 text-[11px] text-stone-500">Unbounded comments · unclear bar</p>
+                  <p className="mt-3 border-t border-stone-300/50 pt-2.5 text-[11px] text-stone-500">
+                    Unbounded comments · unclear bar
+                  </p>
                 </div>
                 <div className="relative overflow-hidden rounded-2xl border border-amber-900/15 bg-gradient-to-br from-amber-100/40 via-white/50 to-stone-100/60 p-6 shadow-sm">
                   <div className="flex items-center justify-between">
@@ -514,28 +527,37 @@ export function LandingView() {
           </div>
         </section>
 
-        {/* Integrations — horizontal, light chrome (less “card farm”) */}
-        <section className="py-14 sm:py-16">
-          <div className="mx-auto max-w-[1320px] px-5">
-            <div className="mx-auto max-w-xl text-center">
+        {/* Integrations — mesh background + lifted cards */}
+        <section className="landing-band-integrations py-16 sm:py-20">
+          <div className="relative z-[1] mx-auto max-w-[1180px] px-5">
+            <div className="mx-auto max-w-2xl text-center">
               <SectionEyebrow>Integrations</SectionEyebrow>
-              <h2 className="text-balance text-[clamp(1.45rem,2.5vw,2.1rem)] font-semibold tracking-[-0.035em] text-stone-900">
+              <h2
+                className="text-balance text-[clamp(1.65rem,3vw,2.35rem)] font-light leading-[1.15] tracking-[-0.02em] text-stone-900 antialiased [font-family:var(--font-hero-serif),ui-serif,Georgia,serif]"
+                style={{ fontFeatureSettings: '"liga" 1, "kern" 1' }}
+              >
                 Fits your GitHub workflow.
               </h2>
+              <p className="mt-5 text-[16px] leading-relaxed text-stone-600">
+                OAuth once, then stay on the PR — trust runs on the diff, not your whole repo map.
+              </p>
             </div>
-            <div className="mt-10 grid gap-8 sm:grid-cols-2 sm:gap-10 lg:grid-cols-4 lg:gap-6">
+            <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
               {[
                 { icon: GitHubIcon, title: "GitHub", desc: "OAuth and repos your team already uses." },
                 { icon: GitBranch, title: "PR flow", desc: "Analyze the PR you’re about to merge." },
                 { icon: Code2, title: "Diff analysis", desc: "Scores the change — not random files." },
                 { icon: MessageSquare, title: "Optional comments", desc: "Post verdicts where reviewers look." },
               ].map((item) => (
-                <div key={item.title} className="group text-center lg:text-left">
-                  <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-xl border border-stone-300/80 bg-white/50 transition-colors group-hover:border-stone-400 lg:mx-0">
-                    <item.icon className="size-5 text-stone-600 transition-colors group-hover:text-stone-900" />
+                <div
+                  key={item.title}
+                  className="group flex flex-col rounded-2xl border border-stone-200/95 bg-white/90 p-6 shadow-[0_8px_32px_-16px_rgba(45,35,28,0.1),0_2px_8px_-4px_rgba(45,35,28,0.06)] backdrop-blur-sm transition-[box-shadow,border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-[0_16px_40px_-18px_rgba(45,35,28,0.14)]"
+                >
+                  <div className="mb-4 flex size-11 items-center justify-center rounded-xl border border-stone-200/90 bg-gradient-to-b from-white to-stone-50/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)] transition-colors group-hover:border-amber-900/15">
+                    <item.icon className="size-[1.35rem] text-stone-700 transition-colors group-hover:text-stone-900" />
                   </div>
-                  <h3 className="text-[14px] font-semibold text-stone-900">{item.title}</h3>
-                  <p className="mt-1 text-[13px] leading-relaxed text-stone-600">{item.desc}</p>
+                  <h3 className="text-[15px] font-semibold tracking-[-0.02em] text-stone-900">{item.title}</h3>
+                  <p className="mt-2 flex-1 text-[13.5px] leading-relaxed text-stone-600">{item.desc}</p>
                 </div>
               ))}
             </div>
