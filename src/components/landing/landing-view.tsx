@@ -96,20 +96,8 @@ function DiffSnippet() {
 
 function HeroProductPanel() {
   return (
-    <div className="relative mx-auto w-full max-w-[460px] lg:mx-0 lg:max-w-none">
-      <div className="overflow-hidden rounded-2xl border border-stone-200/90 bg-white shadow-[0_24px_60px_-28px_rgba(28,25,23,0.22),0_0_0_1px_rgba(28,25,23,0.04)] ring-1 ring-stone-900/[0.04]">
-        <div className="flex items-center justify-between border-b border-stone-200/90 bg-gradient-to-b from-stone-50 to-stone-50/70 px-4 py-3.5">
-          <div className="flex min-w-0 items-center gap-2 font-mono text-[11px] text-stone-600">
-            <GitBranch className="size-3.5 shrink-0 text-stone-500" />
-            <span className="truncate font-medium text-stone-800">acme/web</span>
-            <span className="shrink-0 text-stone-400">·</span>
-            <span className="shrink-0 font-medium text-sky-600">PR #142</span>
-          </div>
-          <span className="shrink-0 rounded-full border border-emerald-200/80 bg-emerald-50 px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-800">
-            Safe
-          </span>
-        </div>
-
+    <div className="mx-auto w-full max-w-[480px] lg:mx-0 lg:max-w-none">
+      <div className="overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-[0_4px_24px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)]">
         <div className="p-5 sm:p-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:gap-7">
             <div className="flex flex-col items-center lg:items-start">
@@ -231,23 +219,17 @@ export function LandingView() {
                 <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
                   <Button
                     type="button"
-                    size="lg"
-                    className="h-11 rounded-full border border-stone-800/10 bg-stone-900 px-7 text-[14px] font-semibold text-white shadow-sm hover:bg-stone-800"
+                    variant="landingPrimary"
+                    className="[&_svg]:size-3.5"
                     onClick={() => signIn("github")}
                   >
                     <GitHubIcon className="size-3.5 text-white" />
                     Connect GitHub
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="lg"
-                    asChild
-                    className="h-11 rounded-full border-stone-400/60 bg-white px-5 text-[14px] font-semibold text-stone-900 shadow-sm hover:bg-stone-50 hover:text-stone-950 dark:border-stone-500 dark:bg-stone-950 dark:text-stone-100 dark:hover:bg-stone-900"
-                  >
+                  <Button type="button" variant="landingSecondary" asChild className="[&_svg]:size-3.5">
                     <Link href="/analyze" className="inline-flex items-center gap-1.5">
                       View Demo
-                      <ChevronRight className="size-3.5 text-stone-500 dark:text-stone-400" />
+                      <ChevronRight className="size-3.5 text-stone-500/80" />
                     </Link>
                   </Button>
                 </div>
@@ -526,8 +508,8 @@ export function LandingView() {
             </p>
             <Button
               type="button"
-              size="lg"
-              className="mt-8 h-11 rounded-full border border-stone-800/10 bg-stone-900 px-10 text-[14px] font-semibold text-white hover:bg-stone-800"
+              variant="landingPrimary"
+              className="mt-8 !px-10 [&_svg]:size-3.5"
               onClick={() => signIn("github")}
             >
               <GitHubIcon className="size-3.5 text-white" />
