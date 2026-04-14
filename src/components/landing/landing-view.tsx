@@ -100,24 +100,47 @@ function HeroProductPanel() {
       <div className="overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-[0_4px_24px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)]">
         <div className="p-5 sm:p-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:gap-7">
-            <div className="flex flex-col items-center lg:items-start">
-              <div
-                className="relative flex size-[9.5rem] items-center justify-center rounded-full p-[3px]"
-                style={{
-                  background:
-                    "conic-gradient(from 200deg, rgba(180, 83, 9, 0.55) 0deg, rgba(214, 176, 120, 0.45) 200deg, rgba(231, 229, 228, 0.9) 200deg 360deg)",
-                }}
-              >
-                <div className="flex size-full flex-col items-center justify-center rounded-full bg-white shadow-inner ring-1 ring-stone-200/80">
-                  <span className="font-mono text-[2.45rem] font-semibold tabular-nums tracking-tight text-stone-900">
+            <div className="flex items-start gap-6">
+              {/* Trust Score Circle */}
+              <div className="relative flex-shrink-0">
+                <svg width={140} height={140} className="transform -rotate-90">
+                  <defs>
+                    <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#10b981" />
+                      <stop offset="100%" stopColor="#34d399" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx={70} cy={70} r={62} strokeWidth={8} className="fill-none stroke-stone-100" />
+                  <circle
+                    cx={70}
+                    cy={70}
+                    r={62}
+                    strokeWidth={8}
+                    fill="none"
+                    stroke="url(#scoreGradient)"
+                    strokeDasharray={`${(87 / 100) * 389.56} 389.56`}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-[72px] font-semibold leading-none tabular-nums tracking-tight text-gray-900">
                     87
                   </span>
-                  <span className="mt-1 font-mono text-[10px] uppercase tracking-[0.22em] text-stone-500">
-                    Trust score
+                  <span className="mt-1 font-mono text-[10px] uppercase tracking-[0.1em] text-gray-500">
+                    Trust Score
+                  </span>
+                  <span className="mt-0.5 font-mono text-[9px] text-gray-400">
+                    out of 100
                   </span>
                 </div>
               </div>
-              <p className="mt-3 font-mono text-[10px] text-stone-500">out of 100</p>
+
+              {/* Verdict Badge */}
+              <div className="mt-3 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+                  Safe
+                </span>
+              </div>
             </div>
 
             <div className="min-w-0 flex-1 space-y-3">
