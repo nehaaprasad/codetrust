@@ -15,6 +15,15 @@ const buttonVariants = cva(
         ghost:
           "text-zinc-800 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800/90",
         link: "rounded-md border-0 bg-transparent px-0 font-medium text-zinc-700 underline-offset-[3px] shadow-none hover:bg-transparent hover:text-zinc-950 hover:underline active:scale-100 dark:text-zinc-300 dark:hover:text-white",
+        /** Marketing / landing — warm stone pills (use with any size; ! fixes height vs default) */
+        landingPrimary:
+          "!h-11 !min-h-[2.75rem] !rounded-full !px-7 !text-[14px] border border-stone-900/15 bg-stone-900 text-white shadow-[0_1px_2px_rgba(28,25,23,0.12)] hover:bg-stone-800 hover:shadow-[0_2px_8px_-2px_rgba(28,25,23,0.2)] dark:border-stone-800 dark:bg-stone-900 dark:hover:bg-stone-800",
+        landingSecondary:
+          "!h-11 !min-h-[2.75rem] !rounded-full !px-6 !text-[14px] border border-stone-200/95 bg-gradient-to-b from-white to-stone-50/70 font-semibold text-stone-800 shadow-[0_1px_0_0_rgba(255,255,255,0.95)_inset,0_2px_6px_-1px_rgba(28,25,23,0.06),0_8px_24px_-12px_rgba(90,70,55,0.15)] ring-1 ring-stone-900/[0.04] hover:border-stone-300/90 hover:bg-white hover:shadow-[0_1px_0_0_rgba(255,255,255,1)_inset,0_4px_14px_-4px_rgba(90,70,55,0.12)] hover:ring-stone-900/[0.06] active:scale-[0.99] dark:border-stone-400/35 dark:to-stone-100/90 dark:text-stone-900 dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.35)] dark:hover:bg-white dark:hover:shadow-[0_4px_20px_-6px_rgba(0,0,0,0.4)]",
+        landingNavPrimary:
+          "!h-9 !min-h-9 !rounded-full !px-3.5 !text-[13px] border border-stone-900/15 bg-stone-900 font-semibold text-white shadow-sm hover:bg-stone-800 dark:hover:bg-stone-800",
+        landingNavSecondary:
+          "!h-9 !min-h-9 !rounded-full !px-3.5 !text-[13px] border border-stone-200/90 bg-gradient-to-b from-white to-stone-50/60 font-semibold text-stone-800 shadow-[0_1px_0_0_rgba(255,255,255,0.95)_inset,0_1px_3px_rgba(28,25,23,0.06),0_6px_16px_-8px_rgba(90,70,55,0.12)] ring-1 ring-stone-900/[0.04] hover:border-stone-300/80 hover:bg-white hover:shadow-[0_2px_10px_-4px_rgba(90,70,55,0.14)] dark:border-stone-400/35 dark:bg-white dark:text-stone-900 dark:hover:bg-white",
       },
       size: {
         default: "h-10 min-h-10 px-5 py-2",
