@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80" fill="none">
   <!-- Subtle workflow grid: dashed rails + nodes (warm brown, low contrast) -->
-  <g stroke="#8B7359" stroke-opacity="0.22" stroke-width="0.9" stroke-linecap="round">
+  <g stroke="#8B7359" stroke-opacity="0.17" stroke-width="0.85" stroke-linecap="round">
     <line x1="0" y1="20" x2="80" y2="20" stroke-dasharray="1 9" />
     <line x1="0" y1="40" x2="80" y2="40" stroke-dasharray="1 9" />
     <line x1="0" y1="60" x2="80" y2="60" stroke-dasharray="1 9" />
@@ -8,7 +8,7 @@
     <line x1="40" y1="0" x2="40" y2="80" stroke-dasharray="1 9" />
     <line x1="60" y1="0" x2="60" y2="80" stroke-dasharray="1 9" />
   </g>
-  <g fill="#A08060" fill-opacity="0.16">
+  <g fill="#A08060" fill-opacity="0.12">
     <rect x="19" y="17" width="3" height="3" rx="0.5" />
     <rect x="39" y="17" width="3" height="3" rx="0.5" />
     <rect x="59" y="17" width="3" height="3" rx="0.5" />
