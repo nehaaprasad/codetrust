@@ -735,6 +735,35 @@ export function LandingView() {
           </div>
         </section>
 
+        {/* Product video demo */}
+        <section className="landing-band-video py-12 sm:py-16">
+          <div className="relative z-[1] mx-auto max-w-[920px] px-5 text-center">
+            <SectionEyebrow>Watch</SectionEyebrow>
+            <h2
+              className="text-balance text-[clamp(1.45rem,2.8vw,2rem)] font-light leading-[1.12] tracking-[-0.02em] text-stone-900 antialiased [font-family:var(--font-hero-serif),ui-serif,Georgia,serif]"
+              style={{ fontFeatureSettings: '"liga" 1, "kern" 1' }}
+            >
+              See AI Code Trust in action
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-pretty text-[14.5px] leading-relaxed text-stone-600">
+              Quick walkthrough of analysis, trust score, and merge verdict on a real code change.
+            </p>
+
+            <div className="relative mx-auto mt-8 aspect-video w-full max-w-[860px] overflow-hidden rounded-2xl border border-stone-200/90 bg-black shadow-[0_20px_50px_-28px_rgba(35,28,22,0.35)] ring-1 ring-stone-900/[0.06] sm:mt-10">
+              <video
+                className="absolute inset-0 h-full w-full object-contain"
+                controls
+                playsInline
+                preload="metadata"
+                aria-label="AI Code Trust product demo video"
+              >
+                <source src="/codetrust.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          </div>
+        </section>
+
         {/* Final CTA — single focal column */}
         <section className="landing-band-final-cta">
           <div className="relative z-[1] mx-auto max-w-[min(100%,42rem)] px-6 text-center sm:px-8">

@@ -315,6 +315,42 @@
   mask-image: radial-gradient(ellipse 92% 88% at 50% 48%, black 28%, transparent 88%);
 }
 
+/* Video band — subtle mesh + soft paper so section does not feel plain */
+.landing-band-video {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  border-top: 1px solid rgba(160, 120, 90, 0.1);
+  background-color: #f7f3ee;
+  background-image: linear-gradient(180deg, #faf8f4 0%, #f2ebe3 100%);
+}
+
+.landing-band-video::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    url("/landing-code-pattern.svg"),
+    radial-gradient(circle at 1px 1px, rgba(110, 84, 61, 0.055) 1px, transparent 0);
+  background-size: 104px 104px, 24px 24px;
+  background-position: 50% 0, 0 0;
+  opacity: 0.28;
+  mask-image: radial-gradient(ellipse 96% 90% at 50% 46%, black 24%, transparent 90%);
+}
+
+.landing-band-video::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 42% at 50% 0%, rgba(255, 253, 250, 0.62), transparent 62%),
+    radial-gradient(ellipse 75% 40% at 50% 100%, rgba(224, 205, 183, 0.18), transparent 70%);
+}
+
 /* Final CTA — zig-zag top edge + soft paper + code/dot motifs */
 .landing-band-final-cta {
   position: relative;
