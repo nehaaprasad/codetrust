@@ -1,6 +1,15 @@
 "use client";
 
+import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
+
+type BannerResult = {
+  node: ReactNode;
+  /** Optional notices (e.g. Redis) fade out as the user scrolls down. */
+  fadeOnScroll?: boolean;
+};
 
 type Health = {
   ok?: boolean;
@@ -12,20 +21,12 @@ type Health = {
   authConfigured?: boolean;
 };
 
-export function SetupBanner() {
-  const q = useQuery({
-    queryKey: ["health"],
-    queryFn: async () => {
-      const res = await fetch("/api/health");
-      return (await res.json()) as Health;
-    },
-    staleTime: 60_000,
-  });
+function buildBanner(data: Health | undefined): BannerResult | null {
+  if (!data) return null;
 
-  if (!q.data) return null;
-
-  if (q.data.database !== "missing" && q.data.authConfigured === false) {
-    return (
+  if (data.database !== "missing" && data.authConfigured === false) {
+    return {
+      node: (
       <div
         className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100"
         role="status"
@@ -68,11 +69,13 @@ export function SetupBanner() {
           ), paste Client ID and Client secret, restart the dev server.
         </p>
       </div>
-    );
+      ),
+    };
   }
 
-  if (q.data.database === "missing") {
-    return (
+  if (data.database === "missing") {
+    return {
+      node: (
       <div
         className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100"
         role="status"
@@ -94,30 +97,96 @@ export function SetupBanner() {
           . See the project README for the full environment list.
         </p>
       </div>
-    );
+      ),
+    };
   }
 
-  if (q.data.redis === "missing" && !q.data.asyncAnalysis) {
-    return (
+  if (data.redis === "missing" && !data.asyncAnalysis) {
+    return {
+      fadeOnScroll: true,
+      node: (
       <div
-        className="border-b border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm text-zinc-900 dark:border-zinc-700/80 dark:bg-zinc-900/50 dark:text-zinc-200"
+        className="relative border-b border-stone-400/30 bg-[#ebe3d9] px-4 py-2.5 text-[13px] leading-snug text-stone-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.45)]"
         role="status"
       >
         <p className="mx-auto max-w-5xl">
-          <strong className="font-semibold">Optional — Redis not configured.</strong>{" "}
+          <strong className="font-semibold text-stone-900">Optional — Redis not configured.</strong>{" "}
           Set{" "}
-          <code className="rounded bg-zinc-200/80 px-1 py-0.5 font-mono text-xs dark:bg-zinc-800/90">
+          <code className="rounded-md bg-white/70 px-1.5 py-0.5 font-mono text-[12px] text-stone-900 ring-1 ring-stone-300/60">
             REDIS_URL
           </code>{" "}
           and run{" "}
-          <code className="rounded bg-zinc-200/80 px-1 py-0.5 font-mono text-xs dark:bg-zinc-800/90">
+          <code className="rounded-md bg-white/70 px-1.5 py-0.5 font-mono text-[12px] text-stone-900 ring-1 ring-stone-300/60">
             npm run worker
           </code>{" "}
           for async analysis queues and GitHub webhook-triggered runs.
         </p>
       </div>
-    );
+      ),
+    };
   }
 
   return null;
+}
+
+function ScrollFadeOptionalBanner({ children }: { children: ReactNode }) {
+  const [opacity, setOpacity] = useState(1);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY;
+      const next = Math.max(0, Math.min(1, 1 - y / 72));
+      setOpacity(next);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <div
+      className={cn(
+        "transition-[opacity] duration-200 ease-out",
+        opacity < 0.04 && "pointer-events-none",
+      )}
+      style={{ opacity }}
+    >
+      {children}
+    </div>
+  );
+}
+
+type SetupBannerProps = {
+  /** Adds top spacing only when a notice renders — use below the main nav bar. */
+  belowNav?: boolean;
+};
+
+export function SetupBanner({ belowNav }: SetupBannerProps = {}) {
+  const q = useQuery({
+    queryKey: ["health"],
+    queryFn: async () => {
+      const res = await fetch("/api/health");
+      return (await res.json()) as Health;
+    },
+    staleTime: 60_000,
+  });
+
+  const built = buildBanner(q.data);
+  if (!built) return null;
+
+  if (belowNav) {
+    const padded = (
+      <div className="w-full shrink-0 pt-3 sm:pt-4">{built.node}</div>
+    );
+    if (built.fadeOnScroll) {
+      return <ScrollFadeOptionalBanner>{padded}</ScrollFadeOptionalBanner>;
+    }
+    return padded;
+  }
+
+  if (built.fadeOnScroll) {
+    return <ScrollFadeOptionalBanner>{built.node}</ScrollFadeOptionalBanner>;
+  }
+
+  return built.node;
 }

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthSessionProvider } from "@/providers/session-provider";
 import { QueryProvider } from "@/providers/query-provider";
-import { SetupBanner } from "@/components/setup-banner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -38,8 +37,7 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col font-sans antialiased [font-synthesis:none]">
         <AuthSessionProvider>
           <QueryProvider>
-            <SetupBanner />
-            {children}
+            <div className="relative flex min-h-0 w-full min-w-0 flex-1 flex-col">{children}</div>
           </QueryProvider>
         </AuthSessionProvider>
       </body>

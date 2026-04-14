@@ -108,3 +108,56 @@
     background-color: rgba(228, 228, 231, 0.18);
   }
 }
+
+/* Landing: warm cream + caramel / brown wash (light canvas) */
+.landing-bg {
+  background-color: #f3e9de;
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% -20%, rgba(214, 176, 120, 0.35), transparent 55%),
+    radial-gradient(ellipse 65% 45% at 100% 20%, rgba(196, 130, 88, 0.12), transparent 50%),
+    radial-gradient(ellipse 55% 40% at 0% 75%, rgba(165, 110, 70, 0.08), transparent 52%),
+    radial-gradient(ellipse 80% 50% at 50% 105%, rgba(232, 212, 190, 0.7), transparent 55%);
+}
+
+.landing-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(88, 60, 40, 0.06) 1px, transparent 0);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(ellipse 90% 75% at 50% 0%, black 20%, transparent 85%);
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+.landing-noise {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+  opacity: 0.35;
+}
+
+.landing-hero-glow {
+  background: radial-gradient(
+    ellipse 78% 58% at 58% 42%,
+    rgba(180, 120, 75, 0.14) 0%,
+    rgba(245, 228, 210, 0.25) 42%,
+    transparent 68%
+  );
+}
+
+.landing-vignette {
+  background: radial-gradient(
+    ellipse 95% 85% at 50% 50%,
+    transparent 52%,
+    rgba(120, 82, 55, 0.06) 100%
+  );
+  pointer-events: none;
+}
+
+/* Mid-page band: slightly richer caramel cream */
+.landing-band-subtle {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, rgba(237, 216, 196, 0.35) 100%);
+  border-top: 1px solid rgba(160, 120, 90, 0.12);
+  border-bottom: 1px solid rgba(160, 120, 90, 0.1);
+}

@@ -65,7 +65,7 @@ export default function ConnectPage() {
   });
 
   function analyzePr(pr: GitHubPullRequest) {
-    router.push(`/?prUrl=${encodeURIComponent(pr.htmlUrl)}`);
+    router.push(`/analyze?prUrl=${encodeURIComponent(pr.htmlUrl)}`);
   }
 
   return (
@@ -274,7 +274,7 @@ export default function ConnectPage() {
         )}
 
         <p className="text-sm text-zinc-500">
-          <Link href="/" className="font-medium text-zinc-700 underline dark:text-zinc-300">
+          <Link href="/analyze" className="font-medium text-zinc-700 underline dark:text-zinc-300">
             ← Back to analyze
           </Link>
         </p>

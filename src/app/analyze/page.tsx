@@ -84,7 +84,7 @@ function verdictBadgeVariant(
   return "secondary";
 }
 
-function HomeContent() {
+function AnalyzeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
@@ -278,7 +278,7 @@ function HomeContent() {
   );
 }
 
-export default function Home() {
+export default function AnalyzePage() {
   return (
     <Suspense
       fallback={
@@ -287,7 +287,7 @@ export default function Home() {
         </div>
       }
     >
-      <HomeContent />
+      <AnalyzeContent />
     </Suspense>
   );
 }

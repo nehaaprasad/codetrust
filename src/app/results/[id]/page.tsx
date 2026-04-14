@@ -236,7 +236,7 @@ export default function ResultPage() {
               {q.error instanceof Error ? q.error.message : "Error"}
             </p>
             <Link
-              href="/"
+              href="/analyze"
               className="mt-4 inline-flex text-sm font-medium text-zinc-700 underline-offset-4 hover:underline dark:text-zinc-300"
             >
               ← Back to analyze
@@ -256,7 +256,7 @@ export default function ResultPage() {
     <Shell>
       <main className="mx-auto flex max-w-4xl flex-col gap-10 px-4 py-12 sm:px-6 sm:py-16">
         <Link
-          href="/"
+          href="/analyze"
           className="w-fit text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:hover:text-zinc-200"
         >
           ← New analysis
