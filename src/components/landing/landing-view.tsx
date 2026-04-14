@@ -528,36 +528,53 @@ export function LandingView() {
         </section>
 
         {/* Integrations — mesh background + lifted cards */}
-        <section className="landing-band-integrations py-16 sm:py-20">
+        <section className="landing-band-integrations py-20 sm:py-24">
           <div className="relative z-[1] mx-auto max-w-[1180px] px-5">
             <div className="mx-auto max-w-2xl text-center">
               <SectionEyebrow>Integrations</SectionEyebrow>
+              <div
+                className="mx-auto mt-3 h-px w-12 bg-gradient-to-r from-transparent via-amber-800/25 to-transparent"
+                aria-hidden
+              />
               <h2
-                className="text-balance text-[clamp(1.65rem,3vw,2.35rem)] font-light leading-[1.15] tracking-[-0.02em] text-stone-900 antialiased [font-family:var(--font-hero-serif),ui-serif,Georgia,serif]"
+                className="mt-5 text-balance text-[clamp(1.7rem,3.1vw,2.45rem)] font-light leading-[1.12] tracking-[-0.02em] text-stone-900 antialiased [font-family:var(--font-hero-serif),ui-serif,Georgia,serif]"
                 style={{ fontFeatureSettings: '"liga" 1, "kern" 1' }}
               >
                 Fits your GitHub workflow.
               </h2>
-              <p className="mt-5 text-[16px] leading-relaxed text-stone-600">
+              <p className="mx-auto mt-5 max-w-xl text-pretty text-[15px] leading-[1.7] text-stone-600">
                 OAuth once, then stay on the PR — trust runs on the diff, not your whole repo map.
               </p>
             </div>
-            <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-              {[
-                { icon: GitHubIcon, title: "GitHub", desc: "OAuth and repos your team already uses." },
-                { icon: GitBranch, title: "PR flow", desc: "Analyze the PR you’re about to merge." },
-                { icon: Code2, title: "Diff analysis", desc: "Scores the change — not random files." },
-                { icon: MessageSquare, title: "Optional comments", desc: "Post verdicts where reviewers look." },
-              ].map((item) => (
+            <div className="mt-14 grid gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4 lg:gap-7">
+              {(
+                [
+                  { icon: GitHubIcon, title: "GitHub", desc: "OAuth and repos your team already uses." },
+                  { icon: GitBranch, title: "PR flow", desc: "Analyze the PR you’re about to merge." },
+                  { icon: Code2, title: "Diff analysis", desc: "Scores the change — not random files." },
+                  { icon: MessageSquare, title: "Optional comments", desc: "Post verdicts where reviewers look." },
+                ] as const
+              ).map((item, i) => (
                 <div
                   key={item.title}
-                  className="group flex flex-col rounded-2xl border border-stone-200/95 bg-white/90 p-6 shadow-[0_8px_32px_-16px_rgba(45,35,28,0.1),0_2px_8px_-4px_rgba(45,35,28,0.06)] backdrop-blur-sm transition-[box-shadow,border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-[0_16px_40px_-18px_rgba(45,35,28,0.14)]"
+                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-stone-200/90 bg-white p-6 shadow-[0_12px_40px_-22px_rgba(35,28,22,0.12),0_2px_10px_-4px_rgba(35,28,22,0.05)] ring-1 ring-stone-900/[0.03] transition-[box-shadow,border-color,transform] duration-300 hover:-translate-y-1 hover:border-stone-300/95 hover:shadow-[0_20px_48px_-24px_rgba(35,28,22,0.18),0_4px_14px_-6px_rgba(35,28,22,0.07)]"
                 >
-                  <div className="mb-4 flex size-11 items-center justify-center rounded-xl border border-stone-200/90 bg-gradient-to-b from-white to-stone-50/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)] transition-colors group-hover:border-amber-900/15">
-                    <item.icon className="size-[1.35rem] text-stone-700 transition-colors group-hover:text-stone-900" />
+                  <div
+                    className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent opacity-90"
+                    aria-hidden
+                  />
+                  <div
+                    className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-amber-900/12 to-transparent"
+                    aria-hidden
+                  />
+                  <span className="absolute right-4 top-3.5 font-mono text-[10px] font-medium tabular-nums tracking-wider text-stone-400">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-gradient-to-b from-stone-50 to-stone-100/90 ring-1 ring-stone-200/80 transition-[background,box-shadow] duration-300 group-hover:from-amber-50/90 group-hover:to-stone-50 group-hover:ring-amber-900/10">
+                    <item.icon className="size-[1.4rem] text-stone-700 transition-colors duration-300 group-hover:text-stone-900" />
                   </div>
                   <h3 className="text-[15px] font-semibold tracking-[-0.02em] text-stone-900">{item.title}</h3>
-                  <p className="mt-2 flex-1 text-[13.5px] leading-relaxed text-stone-600">{item.desc}</p>
+                  <p className="mt-2.5 flex-1 text-[13.5px] leading-[1.62] text-stone-600">{item.desc}</p>
                 </div>
               ))}
             </div>
