@@ -167,13 +167,57 @@ const dimensions = [
   { name: "Maintainability", hint: "Clarity, coupling, change cost", icon: Code2 },
 ];
 
-const steps = [
-  { n: "01", title: "Paste code or connect a repo", body: "Snippet or GitHub — you pick where the change lives." },
-  { n: "02", title: "Analyze the change", body: "Diff-first: what you’re shipping, not the whole tree." },
-  { n: "03", title: "Score the risk", body: "Dimensions roll into one trust score." },
-  { n: "04", title: "Get the verdict", body: "Safe, Risky, or Block — one line for release." },
-  { n: "05", title: "Fix and re-run", body: "Iterate until the score matches your bar." },
+type Step = {
+  n: string;
+  title: string;
+  body: string;
+  items: string[];
+};
+
+const steps: Step[] = [
+  {
+    n: "01",
+    title: "Paste code or connect a repo",
+    body: "Start from a snippet or wire GitHub so analysis always targets the change you’re shipping—not a random slice of the tree.",
+    items: ["Paste a diff, files, or a focused snippet", "Connect GitHub and pick a PR or branch", "Keep scope limited to what merges"],
+  },
+  {
+    n: "02",
+    title: "Analyze the change",
+    body: "We treat the diff as the unit of review: paths, hunks, and touched surfaces—so findings map to what you actually changed.",
+    items: ["Diff-first parsing (not whole-repo noise)", "Surfaces security, logic, perf, tests, a11y, maintainability"],
+  },
+  {
+    n: "03",
+    title: "Score the risk",
+    body: "Signals roll into one trust score you can compare across PRs and teams—same bar, same language.",
+    items: ["Weighted dimensions tuned for merge risk", "Comparable scores across repositories"],
+  },
+  {
+    n: "04",
+    title: "Get the verdict",
+    body: "One shipping line: Safe, Risky, or Block—aligned with how release managers think, not a thread of opinions.",
+    items: ["Policy-friendly outcomes", "Clear gate for merge or hold"],
+  },
+  {
+    n: "05",
+    title: "Fix and re-run",
+    body: "Patch what matters, push again, and re-run until the score matches the bar your org actually enforces.",
+    items: ["Same change set, new result in one click", "Iterate without resetting context"],
+  },
 ];
+
+function StepBullets({ items, className }: { items: string[]; className?: string }) {
+  return (
+    <ul className={cn("mt-4 space-y-2 border-l border-amber-900/15 pl-3.5", className)}>
+      {items.map((line) => (
+        <li key={line} className="text-[13px] leading-snug text-stone-600">
+          {line}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export function LandingView() {
   return (
@@ -185,8 +229,8 @@ export function LandingView() {
 
       <main>
         {/* Hero — editorial stacks + floating product (not a generic 2-col card page) */}
-        <section className="relative">
-          <div className="mx-auto max-w-[1200px] px-5 pb-10 pt-6 sm:pb-14 sm:pt-8 lg:pb-14">
+        <section className="landing-hero-pattern relative">
+          <div className="relative z-[1] mx-auto max-w-[1200px] px-5 pb-10 pt-6 sm:pb-14 sm:pt-8 lg:pb-14">
             <div className="grid items-start gap-8 lg:min-h-0 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] lg:items-center lg:gap-6 xl:gap-10">
               <div className="flex max-w-xl flex-col justify-center lg:max-w-[min(100%,42rem)] lg:pr-1">
                 <SectionEyebrow>AI Code Trust</SectionEyebrow>
@@ -263,7 +307,7 @@ export function LandingView() {
 
         {/* Problem — editorial statement, not a card grid */}
         <section className="landing-band-subtle py-14 sm:py-16">
-          <div className="mx-auto max-w-[880px] px-5">
+          <div className="relative z-[1] mx-auto max-w-[880px] px-5">
             <SectionEyebrow>Problem</SectionEyebrow>
             <p className="text-balance text-[clamp(1.35rem,2.6vw,1.85rem)] font-light leading-[1.28] tracking-[-0.03em] text-stone-800">
               AI writes code faster than most teams can review. Comments splinter across tools — and
@@ -292,103 +336,137 @@ export function LandingView() {
         </section>
 
         {/* How it works — bento (asymmetric; breaks “5 equal cards”) */}
-        <section className="py-14 sm:py-16">
-          <div className="mx-auto max-w-[1320px] px-5">
-            <div className="max-w-xl">
+        <section className="landing-band-how py-14 sm:py-16">
+          <div className="relative z-[1] mx-auto max-w-[1320px] px-5">
+            <div className="max-w-3xl">
               <SectionEyebrow>How it works</SectionEyebrow>
-              <h2 className="text-balance text-[clamp(1.45rem,2.5vw,2.15rem)] font-semibold leading-[1.12] tracking-[-0.035em] text-stone-900">
-                From change to verdict — then back again.
+              <h2
+                className="text-balance text-[clamp(1.65rem,3.2vw,2.65rem)] font-light leading-[1.18] tracking-[-0.02em] text-stone-900 antialiased [font-family:var(--font-hero-serif),ui-serif,Georgia,serif]"
+                style={{ fontFeatureSettings: '"liga" 1, "kern" 1' }}
+              >
+                <span className="block">From change to verdict</span>
+                <span className="mt-1 block text-[0.88em] italic text-stone-700/95">— then back again.</span>
               </h2>
+              <p className="mt-5 max-w-2xl text-pretty text-[15px] leading-relaxed text-stone-600">
+                Five steps: capture the change, judge it with one score and a verdict, then loop until it clears your bar—without
+                losing the thread of what you&apos;re actually shipping.
+              </p>
             </div>
 
             <div className="mt-10 grid gap-2.5 sm:gap-3 lg:grid-cols-12">
-              <div className="flex min-h-[200px] flex-col justify-between rounded-2xl border border-stone-300/70 bg-white/50 p-5 shadow-sm backdrop-blur-sm lg:col-span-7 lg:min-h-[230px]">
-                <div>
-                  <span className="font-mono text-[9px] text-amber-900/80">{steps[0].n}</span>
-                  <h3 className="mt-2.5 text-[17px] font-semibold tracking-[-0.025em] text-stone-900">{steps[0].title}</h3>
-                  <p className="mt-2 max-w-md text-[13.5px] leading-relaxed text-stone-600">{steps[0].body}</p>
-                </div>
-                <div className="mt-5 h-px w-full max-w-xs bg-gradient-to-r from-amber-800/25 to-transparent" />
+              <div className="flex flex-col rounded-2xl border border-stone-300/70 bg-white/55 p-5 shadow-sm backdrop-blur-sm lg:col-span-7">
+                <span className="font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-amber-900/85">
+                  {steps[0].n}
+                </span>
+                <h3 className="mt-2.5 text-[17px] font-semibold tracking-[-0.025em] text-stone-900">{steps[0].title}</h3>
+                <p className="mt-2 max-w-xl text-[13.5px] leading-relaxed text-stone-600">{steps[0].body}</p>
+                <StepBullets items={steps[0].items} className="mt-1 max-w-xl" />
               </div>
 
-              <div className="flex min-h-[200px] flex-col rounded-2xl border border-stone-300/70 bg-white/40 p-5 lg:col-span-5 lg:min-h-[230px]">
-                <span className="font-mono text-[9px] text-amber-900/80">{steps[1].n}</span>
+              <div className="flex flex-col rounded-2xl border border-stone-300/70 bg-white/45 p-5 shadow-sm backdrop-blur-sm lg:col-span-5">
+                <span className="font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-amber-900/85">
+                  {steps[1].n}
+                </span>
                 <h3 className="mt-2.5 text-[16px] font-semibold tracking-[-0.02em] text-stone-900">{steps[1].title}</h3>
-                <p className="mt-1.5 flex-1 text-[13px] leading-relaxed text-stone-600">{steps[1].body}</p>
+                <p className="mt-2 text-[13px] leading-relaxed text-stone-600">{steps[1].body}</p>
+                <StepBullets items={steps[1].items} />
               </div>
 
               {steps.slice(2).map((s) => (
                 <div
                   key={s.n}
-                  className="flex flex-col rounded-2xl border border-stone-300/60 bg-white/35 p-4 lg:col-span-4"
+                  className="flex flex-col rounded-2xl border border-stone-300/60 bg-white/40 p-5 shadow-sm backdrop-blur-sm lg:col-span-4"
                 >
-                  <span className="font-mono text-[9px] text-stone-500">{s.n}</span>
-                  <h3 className="mt-2 text-[14px] font-semibold tracking-[-0.02em] text-stone-900">{s.title}</h3>
-                  <p className="mt-1.5 flex-1 text-[13px] leading-relaxed text-stone-600">{s.body}</p>
+                  <span className="font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-stone-600">{s.n}</span>
+                  <h3 className="mt-2 text-[14.5px] font-semibold tracking-[-0.02em] text-stone-900">{s.title}</h3>
+                  <p className="mt-2 text-[13px] leading-relaxed text-stone-600">{s.body}</p>
+                  <StepBullets items={s.items} className="mt-1" />
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Trust dimensions — split: timeline + figure */}
-        <section className="border-t border-amber-900/10 py-14 sm:py-16">
-          <div className="mx-auto grid max-w-[1320px] gap-10 px-5 lg:grid-cols-[1fr_300px] lg:items-start xl:gap-14">
-            <div>
+        {/* Trust dimensions — timeline + outcome (tight pair; avoids ultra-wide 1fr gap) */}
+        <section className="landing-band-trust py-14 sm:py-16">
+          <div className="relative z-[1] mx-auto max-w-[1320px] px-5">
+            <div className="mx-auto max-w-3xl text-center">
               <SectionEyebrow>Trust score</SectionEyebrow>
-              <h2 className="max-w-xl text-balance text-[clamp(1.45rem,2.5vw,2.1rem)] font-semibold leading-[1.12] tracking-[-0.035em] text-stone-900">
-                Multiple signals. One release decision.
+              <h2
+                className="text-balance text-[clamp(1.9rem,3.4vw,2.85rem)] font-light leading-[1.14] tracking-[-0.02em] text-stone-900 antialiased [font-family:var(--font-hero-serif),ui-serif,Georgia,serif]"
+                style={{ fontFeatureSettings: '"liga" 1, "kern" 1' }}
+              >
+                <span className="block">Multiple signals.</span>
+                <span className="mt-1.5 block text-[0.95em] text-stone-800">One release decision.</span>
               </h2>
-              <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-stone-600">
-                Six dimensions roll into a single score — so “ready to merge” means the same thing in
-                frontend, full-stack, and AI-assisted workflows.
+              <p className="mt-6 text-[17px] leading-[1.65] text-stone-600">
+                Six dimensions roll into a single score — so “ready to merge” means the same thing in frontend,
+                full-stack, and AI-assisted workflows.
               </p>
-
-              <ul className="relative mt-8 space-y-0 border-l border-stone-300/90 pl-6">
-                {dimensions.map((d, i) => (
-                  <li key={d.name} className="relative pb-7 last:pb-0">
-                    <span className="absolute -left-6 top-1 flex size-3.5 -translate-x-1/2 items-center justify-center rounded-full border border-stone-300 bg-[#f3e9de] font-mono text-[8px] text-stone-600">
-                      {i + 1}
-                    </span>
-                    <div className="flex gap-3">
-                      <d.icon className="mt-0.5 size-3.5 shrink-0 text-stone-500" />
-                      <div>
-                        <h3 className="text-[14px] font-medium text-stone-900">{d.name}</h3>
-                        <p className="mt-0.5 text-[13px] text-stone-600">{d.hint}</p>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
             </div>
 
-            <aside className="lg:sticky lg:top-28">
-              <div className="rounded-2xl border border-stone-300/80 bg-white/55 p-6 shadow-sm backdrop-blur-sm">
-                <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-stone-500">Outcome</p>
-                <div className="mt-5 space-y-3">
-                  <div className="flex items-center justify-between border-b border-stone-200/90 pb-2.5">
-                    <span className="text-[13px] text-stone-600">Verdict</span>
-                    <span className="rounded-md bg-emerald-600/10 px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide text-emerald-800">
-                      Safe
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between border-b border-stone-200/90 pb-2.5">
-                    <span className="text-[13px] text-stone-600">Trust</span>
-                    <span className="font-mono text-xl font-semibold tabular-nums text-stone-900">87</span>
-                  </div>
-                  <p className="font-mono text-[11px] leading-relaxed text-stone-500">
-                    Rolls up to <span className="text-emerald-700">Safe</span> ·{" "}
-                    <span className="text-amber-700">Risky</span> · <span className="text-rose-700">Block</span>
-                  </p>
-                </div>
+            <div className="mx-auto mt-10 flex w-full max-w-[52rem] flex-col items-center gap-8 lg:mt-12 lg:flex-row lg:items-start lg:justify-center lg:gap-7 xl:max-w-[56rem] xl:gap-8">
+              <div className="min-w-0 w-full max-w-xl text-left lg:max-w-[26rem]">
+                <p className="mb-4 text-[12px] font-medium uppercase tracking-[0.14em] text-stone-500">
+                  What we measure
+                </p>
+                <ul className="relative space-y-0 border-l border-stone-300/90 pl-6">
+                  {dimensions.map((d, i) => (
+                    <li key={d.name} className="relative pb-5 last:pb-0">
+                      <span className="absolute -left-6 top-1 flex size-3.5 -translate-x-1/2 items-center justify-center rounded-full border border-stone-300 bg-[#f3e9de] font-mono text-[8px] text-stone-600">
+                        {i + 1}
+                      </span>
+                      <div className="flex gap-3">
+                        <d.icon className="mt-0.5 size-4 shrink-0 text-stone-500" />
+                        <div>
+                          <h3 className="text-[15px] font-medium text-stone-900">{d.name}</h3>
+                          <p className="mt-0.5 text-[14px] leading-snug text-stone-600">{d.hint}</p>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </aside>
+
+              <div className="relative flex min-w-0 w-full max-w-md flex-col border-t border-stone-200/80 pt-8 text-left lg:max-w-[18.5rem] lg:flex-none lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0 xl:max-w-[19.5rem] xl:pl-7">
+                <div className="mb-2 flex items-center gap-2 lg:-ml-0">
+                  <ArrowRight className="size-[1.125rem] shrink-0 text-amber-900/55" aria-hidden />
+                  <span className="text-[13px] font-medium text-stone-600">Rolls up here</span>
+                </div>
+                <aside className="lg:sticky lg:top-28">
+                  <div className="rounded-2xl border border-stone-300/80 bg-white p-6 shadow-[0_8px_30px_-18px_rgba(28,25,23,0.12)]">
+                    <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-stone-500">Outcome</p>
+                    <p className="mt-3 text-[14px] leading-snug text-stone-600">
+                      Every signal on the left feeds the same score and a single merge verdict—nothing drifts into a
+                      side conversation.
+                    </p>
+                    <div className="mt-5 space-y-3">
+                      <div className="flex items-center justify-between border-b border-stone-200/90 pb-2.5">
+                        <span className="text-[14px] text-stone-600">Verdict</span>
+                        <span className="text-[14px] font-semibold text-emerald-800">Safe</span>
+                      </div>
+                      <div className="flex items-center justify-between border-b border-stone-200/90 pb-2.5">
+                        <span className="text-[14px] text-stone-600">Trust score</span>
+                        <span className="font-mono text-2xl font-semibold tabular-nums text-stone-900">87</span>
+                      </div>
+                      <p className="text-[13px] leading-relaxed text-stone-500">
+                        Outcomes: <span className="font-medium text-emerald-700">Safe</span>
+                        <span className="text-stone-400"> · </span>
+                        <span className="font-medium text-amber-800">Risky</span>
+                        <span className="text-stone-400"> · </span>
+                        <span className="font-medium text-rose-800">Block</span>
+                      </p>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+            </div>
           </div>
         </section>
 
         {/* Differentiation — contrast panel */}
         <section className="landing-band-subtle py-14 sm:py-16">
-          <div className="mx-auto max-w-[1320px] px-5">
+          <div className="relative z-[1] mx-auto max-w-[1320px] px-5">
             <div className="grid gap-10 lg:grid-cols-2 lg:items-center xl:gap-14">
               <div>
                 <SectionEyebrow>Differentiation</SectionEyebrow>
