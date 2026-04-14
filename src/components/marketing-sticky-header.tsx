@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useId } from "react";
 import { signIn } from "next-auth/react";
 import { SetupBanner } from "@/components/setup-banner";
 import { Button } from "@/components/ui/button";
@@ -14,42 +13,36 @@ function GitHubIcon({ className }: { className?: string }) {
   );
 }
 
-/** Custom mark: stacked “code lanes” + verdict tick — distinct from a generic shield icon. */
+/**
+ * Wordmark icon: diff lanes (left) + verdict check (right) on a solid squircle.
+ * Flat shapes only — reads clearly at 32px and avoids “AI gradient blob” look.
+ */
 function BrandMark({ className }: { className?: string }) {
-  const gid = useId();
-  const gradId = `brand-${gid.replace(/:/g, "")}`;
-
   return (
     <svg
-      viewBox="0 0 36 36"
+      viewBox="0 0 40 40"
       className={className}
       aria-hidden
-      fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <defs>
-        <linearGradient id={gradId} x1="8" y1="6" x2="30" y2="30" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#57534e" />
-          <stop offset="1" stopColor="#b45309" />
-        </linearGradient>
-      </defs>
-      <rect x="3" y="3" width="30" height="30" rx="9" fill={`url(#${gradId})`} opacity="0.12" />
-      <rect x="3.5" y="3.5" width="29" height="29" rx="8.5" stroke={`url(#${gradId})`} strokeWidth="1" opacity="0.55" />
+      <rect width="40" height="40" rx="11" fill="#1c1917" />
+      <line x1="20.5" y1="9" x2="20.5" y2="31" stroke="#fafaf9" strokeOpacity="0.12" strokeWidth="1" />
       <path
-        d="M11 14h6M11 18h10M11 22h7"
-        stroke="#44403c"
-        strokeWidth="1.75"
+        d="M10.5 14.5h6.5M10.5 19.5h10M10.5 24.5h7.5"
+        fill="none"
+        stroke="#fafaf9"
         strokeLinecap="round"
-        opacity="0.85"
+        strokeWidth="2"
+        strokeOpacity="0.92"
       />
       <path
-        d="M24.5 17.5l-3 3-2-2"
-        stroke="#b45309"
-        strokeWidth="2"
+        d="M22.5 20.5l3 3.5 6.5-8"
+        fill="none"
+        stroke="#E06B45"
         strokeLinecap="round"
         strokeLinejoin="round"
+        strokeWidth="2.25"
       />
-      <circle cx="26" cy="12" r="2" fill="#b45309" opacity="0.9" />
     </svg>
   );
 }
@@ -63,10 +56,8 @@ export function MarketingStickyHeader() {
       <div className="landing-vignette pointer-events-none absolute inset-0 -z-10" aria-hidden />
       <header className="relative z-10 border-b border-stone-500/[0.12] bg-[#f4ece3]/88 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-[1320px] items-center justify-between px-5 sm:h-[3.75rem]">
-          <Link href="/" className="group flex items-center gap-3">
-            <span className="flex size-9 items-center justify-center rounded-2xl bg-gradient-to-br from-white/90 to-stone-200/80 shadow-[0_1px_0_0_rgba(255,255,255,0.85),inset_0_1px_2px_rgba(28,25,23,0.06)] ring-1 ring-stone-400/25 transition-shadow group-hover:shadow-md group-hover:ring-stone-400/35">
-              <BrandMark className="size-[1.65rem]" />
-            </span>
+          <Link href="/" className="group flex items-center gap-2.5">
+            <BrandMark className="size-8 shrink-0 transition-transform duration-200 group-hover:scale-[1.03]" />
             <div className="flex flex-col leading-none">
               <span className="text-[14px] font-semibold tracking-[-0.03em] text-stone-900">AI Code Trust</span>
               <span className="mt-0.5 font-mono text-[8px] uppercase tracking-[0.18em] text-stone-500">
@@ -74,20 +65,14 @@ export function MarketingStickyHeader() {
               </span>
             </div>
           </Link>
-          <div className="flex items-center gap-1 sm:gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="text-[13px] font-medium text-stone-700 hover:bg-transparent hover:text-stone-900"
-              asChild
-            >
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <Button type="button" variant="landingNavSecondary" asChild className="[&_svg]:size-3.5">
               <Link href="/analyze">View Demo</Link>
             </Button>
             <Button
               type="button"
-              size="sm"
-              className="rounded-full border border-stone-300/90 bg-stone-900 px-3.5 text-[13px] text-white shadow-sm hover:bg-stone-800"
+              variant="landingNavPrimary"
+              className="[&_svg]:size-3.5"
               onClick={() => signIn("github")}
             >
               <GitHubIcon className="size-3.5" />
