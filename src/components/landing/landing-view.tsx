@@ -47,32 +47,23 @@ function DiffSnippet() {
     { n: "28", sym: "-" as const, text: "  // TODO: validate" },
   ];
   return (
-    <div className="overflow-hidden rounded-xl border border-stone-200/90 bg-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)]">
-      <div className="flex items-center justify-between border-b border-stone-200/80 bg-stone-50/90 px-3 py-2">
-        <span className="font-mono text-[10px] font-medium text-stone-600">auth/session.ts</span>
-        <span className="font-mono text-[10px] tabular-nums text-stone-500">
-          <span className="font-semibold text-emerald-700">+8</span>{" "}
-          <span className="font-semibold text-rose-700">−2</span>
+    <div className="overflow-hidden rounded-md border border-zinc-800 bg-[#141414]">
+      <div className="flex items-center justify-between border-b border-zinc-800/90 px-3 py-2">
+        <span className="font-mono text-[11px] text-zinc-400">auth/session.ts</span>
+        <span className="font-mono text-[11px] tabular-nums text-zinc-500">
+          <span className="text-emerald-400/90">+8</span> <span className="text-rose-400/90">−2</span>
         </span>
       </div>
-      <div className="bg-stone-50/50 p-3 font-mono text-[10px] leading-[1.65]">
+      <div className="p-3 font-mono text-[10px] leading-[1.7] text-zinc-300">
         {lines.map((line) => (
-          <div
-            key={line.n}
-            className={cn(
-              "flex gap-2 rounded-sm",
-              line.sym === "+" && "bg-emerald-100/60",
-              line.sym === "-" && "bg-rose-100/55",
-              line.sym === " " && "bg-transparent",
-            )}
-          >
-            <span className="w-5 shrink-0 select-none text-right text-stone-400">{line.n}</span>
+          <div key={line.n} className="flex gap-2">
+            <span className="w-5 shrink-0 select-none text-right text-zinc-600">{line.n}</span>
             <span
               className={cn(
-                "w-3 shrink-0 text-center font-semibold",
-                line.sym === "+" && "text-emerald-700",
-                line.sym === "-" && "text-rose-700",
-                line.sym === " " && "text-stone-400",
+                "w-3 shrink-0 text-center",
+                line.sym === "+" && "text-emerald-400/90",
+                line.sym === "-" && "text-rose-400/90",
+                line.sym === " " && "text-zinc-600",
               )}
             >
               {line.sym}
@@ -80,9 +71,9 @@ function DiffSnippet() {
             <span
               className={cn(
                 "min-w-0 flex-1",
-                line.sym === "+" && "text-emerald-950",
-                line.sym === "-" && "text-rose-950",
-                line.sym === " " && "text-stone-600",
+                line.sym === "+" && "bg-emerald-500/[0.12] text-zinc-200",
+                line.sym === "-" && "bg-rose-500/[0.12] text-zinc-200",
+                line.sym === " " && "text-zinc-500",
               )}
             >
               {line.text}
@@ -95,94 +86,72 @@ function DiffSnippet() {
 }
 
 function HeroProductPanel() {
+  const findings = [
+    { sev: "high" as const, title: "SQL path in user input", file: "api/users.ts" },
+    { sev: "med" as const, title: "Missing branch coverage", file: "auth/login.test.ts" },
+    { sev: "low" as const, title: "N+1 query pattern", file: "db/queries.ts" },
+  ];
+
   return (
-    <div className="mx-auto w-full max-w-[480px] lg:mx-0 lg:max-w-none">
-      <div className="overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-[0_4px_24px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)]">
-        <div className="p-5 sm:p-6">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:gap-7">
-            <div className="flex items-start gap-6">
-              {/* Trust Score Circle */}
-              <div className="relative flex-shrink-0">
-                <svg width={140} height={140} className="transform -rotate-90">
-                  <defs>
-                    <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#10b981" />
-                      <stop offset="100%" stopColor="#34d399" />
-                    </linearGradient>
-                  </defs>
-                  <circle cx={70} cy={70} r={62} strokeWidth={8} className="fill-none stroke-stone-100" />
-                  <circle
-                    cx={70}
-                    cy={70}
-                    r={62}
-                    strokeWidth={8}
-                    fill="none"
-                    stroke="url(#scoreGradient)"
-                    strokeDasharray={`${(87 / 100) * 389.56} 389.56`}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-[72px] font-semibold leading-none tabular-nums tracking-tight text-gray-900">
-                    87
-                  </span>
-                  <span className="mt-1 font-mono text-[10px] uppercase tracking-[0.1em] text-gray-500">
-                    Trust Score
-                  </span>
-                  <span className="mt-0.5 font-mono text-[9px] text-gray-400">
-                    out of 100
-                  </span>
-                </div>
-              </div>
+    <div className="mx-auto w-full max-w-[440px] lg:mx-0 lg:max-w-none">
+      <div
+        className={cn(
+          "overflow-hidden rounded-xl border border-stone-200/90 bg-white",
+          "shadow-[0_12px_40px_-16px_rgba(28,25,23,0.12),0_2px_6px_-1px_rgba(28,25,23,0.05)]",
+        )}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200/80 bg-white px-4 py-3 sm:px-5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <GitBranch className="size-4 shrink-0 text-stone-400" aria-hidden />
+            <span className="truncate text-sm font-medium text-stone-950">acme/web</span>
+            <span className="shrink-0 text-sm font-medium text-blue-700">#142</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-stone-600">Verdict</span>
+            <span className="font-medium text-emerald-800">Safe</span>
+          </div>
+        </div>
 
-              {/* Verdict Badge */}
-              <div className="mt-3 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5">
-                <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-emerald-700">
-                  Safe
-                </span>
-              </div>
+        <div className="grid gap-6 bg-white p-4 sm:p-5 lg:grid-cols-[minmax(0,7.5rem)_1fr] lg:items-start lg:gap-8">
+          <div>
+            <div className="flex items-baseline gap-1 text-stone-950">
+              <span className="text-[2.75rem] font-semibold leading-none tracking-tight tabular-nums">87</span>
+              <span className="text-sm text-stone-600">/100</span>
             </div>
+            <p className="mt-1 text-xs font-medium text-stone-600">Trust score</p>
+            <div className="mt-3 h-1.5 w-full max-w-[9rem] rounded-full bg-stone-200/90">
+              <div className="h-full w-[87%] rounded-full bg-stone-800" />
+            </div>
+          </div>
 
-            <div className="min-w-0 flex-1 space-y-3">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-stone-500">
-                Top issues
-              </p>
-              <ul className="space-y-2">
-                {[
-                  { sev: "high", title: "SQL path in user input", file: "api/users.ts" },
-                  { sev: "med", title: "Missing branch coverage", file: "auth/login.test.ts" },
-                  { sev: "low", title: "N+1 query pattern", file: "db/queries.ts" },
-                ].map((row) => (
-                  <li
-                    key={row.title}
-                    className="flex items-start gap-3 rounded-lg border border-stone-100 bg-stone-50/80 px-2.5 py-2 last:mb-0"
-                  >
+          <div>
+            <p className="mb-2 text-xs font-medium text-stone-600">Findings</p>
+            <div className="divide-y divide-stone-200/70 overflow-hidden rounded-lg border border-stone-200/90 bg-white">
+              {findings.map((row) => (
+                <div key={row.title} className="px-3 py-2.5">
+                  <p className="text-[13px] leading-snug text-stone-900">
                     <span
                       className={cn(
-                        "mt-0.5 shrink-0 rounded px-1 font-mono text-[9px] font-bold uppercase",
-                        row.sev === "high" && "bg-rose-100 text-rose-800",
-                        row.sev === "med" && "bg-amber-100 text-amber-900",
-                        row.sev === "low" && "bg-stone-200/80 text-stone-600",
+                        "mr-2 font-medium",
+                        row.sev === "high" && "text-rose-700",
+                        row.sev === "med" && "text-amber-800",
+                        row.sev === "low" && "text-stone-500",
                       )}
                     >
-                      {row.sev}
+                      {row.sev === "high" ? "High" : row.sev === "med" ? "Med" : "Low"}
                     </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-[13px] font-medium text-stone-900">{row.title}</p>
-                      <p className="font-mono text-[11px] text-stone-500">{row.file}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+                    {row.title}
+                  </p>
+                  <p className="mt-0.5 font-mono text-[11px] text-stone-600">{row.file}</p>
+                </div>
+              ))}
             </div>
           </div>
+        </div>
 
-          <div className="mt-5 border-t border-stone-200/90 pt-5">
-            <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-stone-500">
-              Diff
-            </p>
-            <DiffSnippet />
-          </div>
+        <div className="border-t border-stone-200/80 bg-white px-4 py-3.5 sm:px-5">
+          <p className="mb-2 text-xs font-medium text-stone-600">Diff</p>
+          <DiffSnippet />
         </div>
       </div>
     </div>
@@ -242,17 +211,23 @@ export function LandingView() {
                 <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
                   <Button
                     type="button"
-                    variant="landingPrimary"
-                    className="[&_svg]:size-3.5"
+                    size="lg"
+                    className="h-11 rounded-full border border-stone-800/10 bg-stone-900 px-7 text-[14px] font-semibold text-white shadow-sm hover:bg-stone-800"
                     onClick={() => signIn("github")}
                   >
                     <GitHubIcon className="size-3.5 text-white" />
                     Connect GitHub
                   </Button>
-                  <Button type="button" variant="landingSecondary" asChild className="[&_svg]:size-3.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    asChild
+                    className="h-11 rounded-full border-stone-400/60 bg-white px-5 text-[14px] font-semibold text-stone-900 shadow-sm hover:bg-stone-50 hover:text-stone-950 dark:border-stone-500 dark:bg-stone-950 dark:text-stone-100 dark:hover:bg-stone-900"
+                  >
                     <Link href="/analyze" className="inline-flex items-center gap-1.5">
                       View Demo
-                      <ChevronRight className="size-3.5 text-stone-500/80" />
+                      <ChevronRight className="size-3.5 text-stone-500 dark:text-stone-400" />
                     </Link>
                   </Button>
                 </div>
@@ -531,8 +506,8 @@ export function LandingView() {
             </p>
             <Button
               type="button"
-              variant="landingPrimary"
-              className="mt-8 !px-10 [&_svg]:size-3.5"
+              size="lg"
+              className="mt-8 h-11 rounded-full border border-stone-800/10 bg-stone-900 px-10 text-[14px] font-semibold text-white hover:bg-stone-800"
               onClick={() => signIn("github")}
             >
               <GitHubIcon className="size-3.5 text-white" />
