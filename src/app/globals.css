@@ -282,21 +282,37 @@
 .landing-band-proof::before {
   content: "";
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 96px;
   z-index: 0;
   pointer-events: none;
   background-image: url("/landing-proof-contributions.svg");
-  background-repeat: no-repeat;
-  background-position: center center;
-  /* Cover scales the strip up so squares read large (not tiny cells). */
-  background-size: cover;
-  opacity: 0.13;
+  background-repeat: repeat-x;
+  background-position: center top;
+  /* Slightly bigger squares, but softer fade-in. */
+  background-size: auto 96px;
+  opacity: 0.64;
   mask-image: radial-gradient(
-    ellipse 96% 92% at 50% 48%,
-    rgba(0, 0, 0, 0.92) 22%,
-    rgba(0, 0, 0, 0.4) 58%,
-    transparent 88%
+    ellipse 118% 100% at 50% 0%,
+    #000 0%,
+    rgba(0, 0, 0, 0.88) 36%,
+    rgba(0, 0, 0, 0.24) 72%,
+    transparent 100%
   );
+}
+
+.landing-band-proof::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle at 1px 1px, rgba(120, 92, 68, 0.05) 1px, transparent 0);
+  background-size: 24px 24px;
+  opacity: 0.38;
+  mask-image: radial-gradient(ellipse 92% 88% at 50% 48%, black 28%, transparent 88%);
 }
 
 /* Final CTA — zig-zag top edge + soft paper + code/dot motifs */

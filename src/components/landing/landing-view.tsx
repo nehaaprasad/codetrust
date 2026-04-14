@@ -705,7 +705,7 @@ export function LandingView() {
         </section>
 
         {/* Before / After — type-forward */}
-        <section className="landing-band-proof py-10 sm:py-12">
+        <section className="landing-band-proof py-8 sm:py-10">
           <div className="relative z-[1] mx-auto max-w-[880px] px-5 text-center">
             <SectionEyebrow>Proof</SectionEyebrow>
             <h2 className="text-balance text-[clamp(1.45rem,2.5vw,2.1rem)] font-semibold tracking-[-0.035em] text-stone-900">
@@ -715,7 +715,7 @@ export function LandingView() {
               Fix what matters, re-run the same change, watch trust move.
             </p>
 
-            <div className="mt-10 flex flex-col items-center justify-center gap-6 sm:flex-row sm:gap-12 md:gap-14">
+            <div className="mt-8 flex flex-col items-center justify-center gap-5 sm:flex-row sm:gap-10 md:gap-12">
               <div className="text-center">
                 <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-stone-500">First run</p>
                 <p className="mt-2 font-mono text-[clamp(3rem,8vw,5rem)] font-semibold leading-none tabular-nums tracking-tight text-stone-400">
