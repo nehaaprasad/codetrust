@@ -230,14 +230,20 @@
   mask-image: radial-gradient(ellipse 95% 58% at 50% 0%, black 0%, transparent 68%);
 }
 
-/* Integrations — dashed grid + nodes (warm brown mesh, readable like a product diagram) */
+/* Integrations — paper grain + mesh (softer, more “premium deck” than raw grid) */
 .landing-band-integrations {
   position: relative;
   isolation: isolate;
   overflow: clip;
-  border-top: 1px solid rgba(160, 120, 90, 0.11);
-  border-bottom: 1px solid rgba(160, 120, 90, 0.09);
-  background: linear-gradient(165deg, #fdfcfa 0%, #f7f1ea 40%, #eee3d6 100%);
+  border-top: 1px solid rgba(160, 120, 90, 0.1);
+  border-bottom: 1px solid rgba(160, 120, 90, 0.08);
+  background-color: #faf9f6;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(115, 95, 75, 0.04) 1px, transparent 0),
+    linear-gradient(168deg, #fdfcfa 0%, #f6efe6 42%, #ebe1d4 100%);
+  background-size:
+    20px 20px,
+    auto;
 }
 
 .landing-band-integrations::before {
@@ -248,8 +254,8 @@
   pointer-events: none;
   background-image: url("/landing-integrations-grid.svg");
   background-size: 80px 80px;
-  opacity: 0.62;
-  mask-image: radial-gradient(ellipse 95% 90% at 50% 48%, black 18%, black 55%, transparent 82%);
+  opacity: 0.45;
+  mask-image: radial-gradient(ellipse 98% 92% at 50% 45%, black 22%, black 62%, transparent 88%);
 }
 
 .landing-band-integrations::after {
@@ -258,7 +264,9 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: radial-gradient(ellipse 130% 70% at 50% -5%, rgba(255, 252, 248, 0.55), transparent 48%);
+  background:
+    radial-gradient(ellipse 120% 75% at 50% -15%, rgba(255, 252, 248, 0.72), transparent 52%),
+    radial-gradient(ellipse 90% 55% at 50% 110%, rgba(232, 218, 198, 0.35), transparent 55%);
 }
 
 /* Trust score band: light brown paper + project pattern (diff / verdict / branch) */
