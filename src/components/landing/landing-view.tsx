@@ -46,11 +46,10 @@ function XIcon({ className }: { className?: string }) {
   );
 }
 
-/** Replace with your public profile or org URLs */
 const FOOTER_SOCIAL = {
-  github: "https://github.com",
-  linkedin: "https://www.linkedin.com",
-  x: "https://x.com",
+  github: "https://github.com/nehaaprasad/codetrust",
+  linkedin: "https://www.linkedin.com/in/neha-prasad-92499821b/",
+  x: "https://x.com/nehaaaa_6",
 } as const;
 
 function SectionEyebrow({ children }: { children: React.ReactNode }) {
