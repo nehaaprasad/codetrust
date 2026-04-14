@@ -24,7 +24,12 @@ import { cn } from "@/lib/utils";
 
 function GitHubIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={cn("block shrink-0 text-inherit", className)}
+      aria-hidden
+    >
       <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
     </svg>
   );
@@ -283,26 +288,25 @@ export function LandingView() {
                   <span className="font-medium text-stone-800">Block</span> — across security, logic, performance,
                   testing, accessibility, and maintainability.
                 </p>
-                <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="mt-7 flex max-w-full flex-row flex-nowrap items-center gap-2 overflow-x-auto sm:gap-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   <Button
                     type="button"
-                    size="lg"
-                    className="h-11 rounded-full border border-stone-800/10 bg-stone-900 px-7 text-[14px] font-semibold text-white shadow-sm hover:bg-stone-800"
+                    variant="landingPrimary"
+                    className="shrink-0 [&_svg]:size-3.5 shadow-sm !px-4 sm:!px-7"
                     onClick={() => signIn("github")}
                   >
-                    <GitHubIcon className="size-3.5 text-white" />
+                    <GitHubIcon />
                     Connect GitHub
                   </Button>
                   <Button
                     type="button"
-                    variant="outline"
-                    size="lg"
+                    variant="landingSecondary"
                     asChild
-                    className="h-11 rounded-full border-stone-400/60 bg-white px-5 text-[14px] font-semibold text-stone-900 shadow-sm hover:bg-stone-50 hover:text-stone-950 dark:border-stone-500 dark:bg-stone-950 dark:text-stone-100 dark:hover:bg-stone-900"
+                    className="shrink-0 !px-4 shadow-sm sm:!px-5"
                   >
                     <Link href="/analyze" className="inline-flex items-center gap-1.5">
                       View Demo
-                      <ChevronRight className="size-3.5 text-stone-500 dark:text-stone-400" />
+                      <ChevronRight className="size-3.5 opacity-[0.82]" aria-hidden />
                     </Link>
                   </Button>
                 </div>
@@ -362,6 +366,103 @@ export function LandingView() {
                   </li>
                 ))}
               </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* LLM vs general chat — pipeline verdict, not open conversation */}
+        <section className="landing-band-how py-14 sm:py-16">
+          <div className="relative z-[1] mx-auto max-w-[1100px] px-5">
+            <div className="mx-auto max-w-3xl text-center lg:mx-0 lg:max-w-[48rem] lg:text-left">
+              <SectionEyebrow>How the LLM fits in</SectionEyebrow>
+              <h2
+                className="text-balance text-[clamp(1.5rem,2.85vw,2.15rem)] font-light leading-[1.14] tracking-[-0.02em] text-stone-900 antialiased [font-family:var(--font-hero-serif),ui-serif,Georgia,serif]"
+                style={{ fontFeatureSettings: '"liga" 1, "kern" 1' }}
+              >
+                A model inside a merge pipeline — not a chat window.
+              </h2>
+              <p className="mx-auto mt-4 max-w-2xl text-pretty text-[15px] leading-relaxed text-stone-600 lg:mx-0">
+                ChatGPT and Claude are general assistants: open-ended answers, session by session. AI Code Trust uses the same{" "}
+                <span className="font-medium text-stone-800">kind</span> of model as{" "}
+                <span className="font-medium text-stone-800">one layer</span> in a fixed pipeline — after deterministic checks,
+                structured review, then a single <span className="font-medium text-stone-800">trust score</span> and{" "}
+                <span className="font-medium text-stone-800">Safe, Risky, or Block</span> on the change you ship.
+              </p>
+            </div>
+
+            <div className="mt-10 grid items-stretch gap-6 lg:grid-cols-2 lg:gap-8">
+              <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-stone-200/95 bg-gradient-to-b from-white/95 to-stone-100/45 p-6 shadow-[0_16px_44px_-26px_rgba(35,28,22,0.14),0_2px_8px_-4px_rgba(35,28,22,0.06)] ring-1 ring-stone-900/[0.035] backdrop-blur-[2px] sm:p-7">
+                <div
+                  className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-stone-400/35 to-transparent"
+                  aria-hidden
+                />
+                <div className="pointer-events-none absolute inset-x-6 top-3.5 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent opacity-90" aria-hidden />
+                <div className="flex gap-4">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-b from-stone-50 to-stone-100/80 ring-1 ring-stone-200/90 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)]">
+                    <MessageSquare className="size-[1.35rem] text-stone-500" aria-hidden />
+                  </div>
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    <p className="font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-stone-500">
+                      Typical chat tools
+                    </p>
+                    <p className="mt-2 text-[13.5px] leading-snug text-stone-600">
+                      Great for questions and drafts —{" "}
+                      <span className="text-stone-700">not a release gate.</span>
+                    </p>
+                  </div>
+                </div>
+                <ul className="mt-6 space-y-3 border-t border-stone-200/70 pt-6 text-[13.5px] leading-relaxed text-stone-600">
+                  {[
+                    "Back-and-forth dialogue; answers shift with how you prompt",
+                    "No rolled-up trust score or merge verdict for a specific diff",
+                    "You copy context in each time; no PR-native loop by default",
+                    "Hard to standardize “ship / don’t ship” across the team",
+                  ].map((t) => (
+                    <li key={t} className="flex gap-2.5">
+                      <span
+                        className="mt-2 size-1.5 shrink-0 rounded-full bg-stone-400/85 ring-2 ring-stone-300/40"
+                        aria-hidden
+                      />
+                      <span>{t}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-amber-900/20 bg-gradient-to-br from-white via-amber-50/40 to-[#f0e4d8]/90 p-6 shadow-[0_20px_52px_-24px_rgba(120,80,50,0.22),0_4px_14px_-6px_rgba(90,70,55,0.1)] ring-1 ring-amber-900/[0.08] sm:p-7">
+                <div
+                  className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-700/25 to-transparent"
+                  aria-hidden
+                />
+                <div className="pointer-events-none absolute inset-x-4 top-3 h-[3.5rem] rounded-full bg-[radial-gradient(ellipse_80%_100%_at_50%_0%,rgba(214,176,120,0.12),transparent_72%)]" aria-hidden />
+                <div className="relative flex gap-4">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-b from-amber-50/95 to-stone-100/90 ring-1 ring-amber-900/12 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.85)]">
+                    <Gauge className="size-[1.35rem] text-amber-900/85" aria-hidden />
+                  </div>
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    <p className="font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-amber-900/88">
+                      What this product adds
+                    </p>
+                    <p className="mt-2 text-[13.5px] leading-snug text-stone-700">
+                      Rules + optional model pass → scored issues →{" "}
+                      <span className="font-medium text-stone-900">one verdict per run.</span>
+                    </p>
+                  </div>
+                </div>
+                <ul className="relative mt-6 space-y-3 border-t border-amber-900/12 pt-6 text-[13.5px] leading-relaxed text-stone-700">
+                  {[
+                    "Deterministic checks run first; the LLM adds structured findings that rules can miss",
+                    "Output feeds dimensions and a weighted trust score — not a thread to negotiate",
+                    "Scoped to the change (paste, PR, branch) with GitHub wiring when you connect",
+                    "Re-run the same change and compare scores as fixes land",
+                  ].map((t) => (
+                    <li key={t} className="flex gap-2.5">
+                      <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-amber-800/80" aria-hidden />
+                      <span>{t}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
         </section>
@@ -655,11 +756,11 @@ export function LandingView() {
             </p>
             <Button
               type="button"
-              size="lg"
-              className="mt-7 h-12 rounded-full border border-stone-800/10 bg-stone-900 px-12 text-[15px] font-semibold text-white hover:bg-stone-800 sm:text-[16px]"
+              variant="landingPrimary"
+              className="mt-7 !h-12 !min-h-12 !px-12 !text-[15px] !shadow-none hover:!shadow-[0_2px_8px_-2px_rgba(28,25,23,0.2)] sm:!text-[16px]"
               onClick={() => signIn("github")}
             >
-              <GitHubIcon className="size-4 text-white" />
+              <GitHubIcon />
               Connect GitHub
             </Button>
             <p className="mt-6 font-mono text-[12px] text-stone-500 sm:text-[12.5px]">
