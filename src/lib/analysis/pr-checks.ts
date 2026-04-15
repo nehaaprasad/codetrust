@@ -80,7 +80,11 @@ function checkAddedLineSecurity(
   }
 
   // High: SQL injection via string concatenation
-  if (/(\$\{|\+)\s*['"]?\s*(SELECT|INSERT|DELETE|UPDATE)\b/i.test(content)) {
+  // Matches: 'SELECT...' + var, "SELECT..." + var, var + 'SELECT...'
+  if (
+    /['"][^'"]*(SELECT|INSERT|DELETE|UPDATE)[^'"]*['"]\s*\+\s*\w+/.test(content) ||
+    /\w+\s*\+\s*['"][^'"]*(SELECT|INSERT|DELETE|UPDATE)[^'"]*['"]/.test(content)
+  ) {
     issues.push({
       category: "security",
       severity: "high",
