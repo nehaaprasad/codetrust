@@ -2,6 +2,9 @@
  * Diff parsing and types
  */
 
+import { Octokit } from "@octokit/rest";
+import { parseGithubPrUrl } from "./parsePrUrl";
+
 export interface DiffLine {
   type: "context" | "added" | "deleted";
   content: string;
@@ -128,4 +131,24 @@ export function parseDiff(diffOutput: string): ParsedDiff {
     totalAdditions: files.reduce((sum, f) => sum + f.additions, 0),
     totalDeletions: files.reduce((sum, f) => sum + f.deletions, 0),
   };
+}
+
+/**
+ * Fetch the raw unified diff for a PR.
+ */
+export async function fetchRawPrDiff(prUrl: string, token: string): Promise<string> {
+  const parsed = parseGithubPrUrl(prUrl);
+  if (!parsed) throw new Error("Invalid PR URL");
+
+  const octokit = new Octokit({ auth: token });
+  const { owner, repo, pull_number } = parsed;
+
+  const { data } = await octokit.pulls.get({
+    owner,
+    repo,
+    pull_number,
+    mediaType: { format: "diff" },
+  });
+
+  return typeof data === "string" ? data : "";
 }

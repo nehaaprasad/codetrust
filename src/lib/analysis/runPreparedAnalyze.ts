@@ -34,6 +34,20 @@ export type AnalyzePipelineJson = {
     trustLevel?: string | null;
   }>;
   dimensionScores: Record<string, number>;
+  prFeedback?: {
+    decision: string;
+    score: number;
+    summary: string;
+    issues: Array<{
+      filePath: string;
+      lineNumber: number | null;
+      severity: string;
+      message: string;
+      whyItMatters: string;
+      category: string;
+    }>;
+    isPrSpecific: boolean;
+  };
 };
 
 export async function runPreparedAnalyze(
@@ -41,10 +55,13 @@ export async function runPreparedAnalyze(
   job?: ProgressJob,
   persistContext?: { userId?: string | null; apiKeyId?: string | null },
 ): Promise<AnalyzePipelineJson> {
-  const { files, stored, projectId, parsedPr, workspaceId } = input;
+  const { files, stored, projectId, parsedPr, workspaceId, prDiff } = input;
 
   await job?.updateProgress({ stage: "analyzing" });
-  const result = await analyzeFiles(files, { workspaceId: workspaceId ?? null });
+  const result = await analyzeFiles(files, {
+    workspaceId: workspaceId ?? null,
+    prDiff: prDiff ?? undefined,
+  });
 
   await job?.updateProgress({ stage: "scoring" });
 
@@ -138,5 +155,23 @@ export async function runPreparedAnalyze(
     })),
     sources: result.sources,
     dimensionScores: result.dimensionScores,
+    ...(result.prFeedback
+      ? {
+          prFeedback: {
+            decision: result.prFeedback.decision,
+            score: result.prFeedback.score,
+            summary: result.prFeedback.summary,
+            issues: result.prFeedback.issues.map((i) => ({
+              filePath: i.filePath,
+              lineNumber: i.lineNumber,
+              severity: i.severity,
+              message: i.message,
+              whyItMatters: i.whyItMatters,
+              category: i.category,
+            })),
+            isPrSpecific: result.prFeedback.isPrSpecific,
+          },
+        }
+      : {}),
   };
 }

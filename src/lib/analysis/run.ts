@@ -8,6 +8,10 @@ import {
   dimensionScoresFromIssues,
   weightedTrustScore,
 } from "./scoring";
+import { extractChangedLines } from "./diff-parser";
+import { runPrChecks } from "./pr-checks";
+import { computePrScore } from "./pr-scorer";
+import { formatPrFeedback, type PrFeedback } from "./pr-formatter";
 import type { AnalysisIssue, Decision, SourceRef } from "./types";
 
 export type AnalysisResult = {
@@ -18,11 +22,12 @@ export type AnalysisResult = {
   issues: AnalysisIssue[];
   sources: SourceRef[];
   dimensionScores: ReturnType<typeof dimensionScoresFromIssues>;
+  prFeedback?: PrFeedback;
 };
 
 export async function analyzeFiles(
   files: CodeFile[],
-  options?: { workspaceId?: string | null },
+  options?: { workspaceId?: string | null; prDiff?: string },
 ): Promise<AnalysisResult> {
   const customRules = await loadEnabledCustomRules(options?.workspaceId);
   const customIssues = applyCustomRules(files, customRules);
@@ -36,6 +41,23 @@ export async function analyzeFiles(
     merged = mergeIssues(merged, llm.issues);
     if (llm.summaryNote?.trim()) summaryNote = llm.summaryNote;
     usedLlm = true;
+  }
+
+  // PR-aware analysis: run targeted checks on changed lines
+  let prFeedback: PrFeedback | undefined;
+  if (options?.prDiff) {
+    const changedRegions = extractChangedLines(options.prDiff);
+    const prIssues = runPrChecks(files, changedRegions.files);
+
+    if (prIssues.length > 0) {
+      const prScore = computePrScore(prIssues);
+      prFeedback = formatPrFeedback(
+        prIssues,
+        prScore.decision,
+        prScore.score,
+        prScore.isPRSpecific,
+      );
+    }
   }
 
   const dimensionScores = dimensionScoresFromIssues(merged);
@@ -71,6 +93,15 @@ export async function analyzeFiles(
     });
   }
 
+  // Add PR-specific analysis source if applicable
+  if (prFeedback) {
+    sources.push({
+      title: "PR-aware analysis",
+      excerpt: "Targeted checks on changed code regions for context-specific feedback.",
+      trustLevel: "high",
+    });
+  }
+
   return {
     modelVersion,
     score,
@@ -79,5 +110,6 @@ export async function analyzeFiles(
     issues: merged,
     sources,
     dimensionScores,
+    ...(prFeedback ? { prFeedback } : {}),
   };
 }

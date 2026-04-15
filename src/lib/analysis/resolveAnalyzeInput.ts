@@ -2,6 +2,7 @@ import type { CodeFile } from "@/lib/analysis/checks";
 import { fetchPrFilesForAnalysis } from "@/lib/github/fetchPrFiles";
 import { canonicalRepoUrl } from "@/lib/github/repoUrl";
 import { parseGithubPrUrl, type ParsedPrUrl } from "@/lib/github/parsePrUrl";
+import { fetchRawPrDiff } from "@/lib/github/diff";
 import { isDatabaseConfigured, getPrisma } from "@/lib/db";
 import type { StoredAnalysisInput } from "@/lib/persistAnalysis";
 import type { AnalyzeBody } from "@/lib/validation/analyze";
@@ -12,6 +13,7 @@ export type PreparedAnalyzeInput = {
   projectId: string | null;
   parsedPr: ParsedPrUrl | null;
   workspaceId: string | null;
+  prDiff?: string;
 };
 
 /**
@@ -31,6 +33,7 @@ export async function resolveAnalyzeInput(
       throw new Error("Invalid GitHub pull request URL format.");
     }
     const pr = await fetchPrFilesForAnalysis(url, token);
+    const prDiff = await fetchRawPrDiff(url, token);
     let projectId: string | null = null;
     if (isDatabaseConfigured()) {
       const prisma = getPrisma();
@@ -48,6 +51,7 @@ export async function resolveAnalyzeInput(
       projectId,
       parsedPr: parsed,
       workspaceId: body.workspaceId ?? null,
+      prDiff,
     };
   }
 
