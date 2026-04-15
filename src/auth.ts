@@ -31,7 +31,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, account }) {
       if (account?.access_token && typeof account.access_token === "string") {
         token.githubAccessToken = account.access_token;
-        // Some tooling expects a generic name; keep both.
         token.accessToken = account.access_token;
       }
       return token;
@@ -39,6 +38,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (session.user && token.sub) {
         session.user.id = token.sub;
+      }
+      const gh = token.githubAccessToken ?? token.accessToken;
+      if (typeof gh === "string") {
+        (session as unknown as Record<string, unknown>).accessToken = gh;
+        (session as unknown as Record<string, unknown>).githubAccessToken = gh;
       }
       return session;
     },

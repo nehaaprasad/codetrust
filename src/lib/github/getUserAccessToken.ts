@@ -44,23 +44,15 @@ export async function getGitHubAccessTokenFromRequest(
   // Method 3: Try server-side session auth()
   try {
     const session = await auth();
-    const fromSession = (session as Record<string, unknown> | null)?.githubAccessToken;
+    const sessionData = session as Record<string, unknown> | null;
+    const fromSession =
+      (sessionData?.accessToken as string) ??
+      (sessionData?.githubAccessToken as string);
     if (typeof fromSession === "string") {
       return fromSession;
     }
-    // Debug: log session details in production
-    if (process.env.NODE_ENV === "production") {
-      console.log("[getGitHubAccessToken] Session exists:", !!session);
-    }
-  } catch (e) {
-    if (process.env.NODE_ENV === "production") {
-      console.log("[getGitHubAccessToken] auth() error:", e);
-    }
-  }
-
-  // Debug info for production diagnostics
-  if (process.env.NODE_ENV === "production") {
-    console.log("[getGitHubAccessToken] All methods exhausted, no token found");
+  } catch {
+    // Continue
   }
 
   return null;
