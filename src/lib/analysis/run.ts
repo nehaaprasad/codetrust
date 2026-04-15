@@ -8,7 +8,7 @@ import {
   dimensionScoresFromIssues,
   weightedTrustScore,
 } from "./scoring";
-import { extractChangedLines } from "./diff-parser";
+import { extractChangedLines, type ChangedFileRegion } from "./diff-parser";
 import { runPrChecks } from "./pr-checks";
 import { computePrScore } from "./pr-scorer";
 import { formatPrFeedback, type PrFeedback } from "./pr-formatter";
@@ -24,6 +24,51 @@ export type AnalysisResult = {
   dimensionScores: ReturnType<typeof dimensionScoresFromIssues>;
   prFeedback?: PrFeedback;
 };
+
+/**
+ * Filter issues to only those related to PR changes.
+ * Removes: file-level, project-level, global maintainability suggestions.
+ */
+function filterToPrRelated(
+  issues: AnalysisIssue[],
+  changedRegions: Record<string, ChangedFileRegion>,
+  contextLines = 5,
+): AnalysisIssue[] {
+  if (Object.keys(changedRegions).length === 0) {
+    return issues;
+  }
+
+  return issues.filter((issue) => {
+    // Must have a file path and line number
+    if (!issue.filePath || !issue.lineNumber) {
+      return false;
+    }
+
+    const region = changedRegions[issue.filePath];
+    if (!region) {
+      return false;
+    }
+
+    // Check if line is within changed ranges or nearby context
+    for (const range of region.addedRanges) {
+      const expandedStart = Math.max(1, range.start - contextLines);
+      const expandedEnd = range.end + contextLines;
+      if (issue.lineNumber >= expandedStart && issue.lineNumber <= expandedEnd) {
+        return true;
+      }
+    }
+
+    for (const range of region.deletedRanges) {
+      const expandedStart = Math.max(1, range.start - contextLines);
+      const expandedEnd = range.end + contextLines;
+      if (issue.lineNumber >= expandedStart && issue.lineNumber <= expandedEnd) {
+        return true;
+      }
+    }
+
+    return false;
+  });
+}
 
 export async function analyzeFiles(
   files: CodeFile[],
@@ -45,9 +90,12 @@ export async function analyzeFiles(
 
   // PR-aware analysis: run targeted checks on changed lines
   let prFeedback: PrFeedback | undefined;
+  let prFilteredIssues = merged;
+  let changedRegions: Record<string, ChangedFileRegion> = {};
+
   if (options?.prDiff) {
-    const changedRegions = extractChangedLines(options.prDiff);
-    const prIssues = runPrChecks(files, changedRegions.files);
+    changedRegions = extractChangedLines(options.prDiff).files;
+    const prIssues = runPrChecks(files, changedRegions);
 
     if (prIssues.length > 0) {
       const prScore = computePrScore(prIssues);
@@ -58,12 +106,15 @@ export async function analyzeFiles(
         prScore.isPRSpecific,
       );
     }
+
+    // Filter main issues to PR-related only
+    prFilteredIssues = filterToPrRelated(merged, changedRegions);
   }
 
-  const dimensionScores = dimensionScoresFromIssues(merged);
+  const dimensionScores = dimensionScoresFromIssues(prFilteredIssues);
   const score = weightedTrustScore(dimensionScores);
-  const decision = decisionFromScore(score, merged);
-  let summary = buildSummary(decision, merged);
+  const decision = decisionFromScore(score, prFilteredIssues);
+  let summary = buildSummary(decision, prFilteredIssues);
   if (summaryNote?.trim()) {
     summary = `${summary} ${summaryNote.trim()}`;
   }
@@ -107,7 +158,7 @@ export async function analyzeFiles(
     score,
     decision,
     summary,
-    issues: merged,
+    issues: prFilteredIssues,
     sources,
     dimensionScores,
     ...(prFeedback ? { prFeedback } : {}),
