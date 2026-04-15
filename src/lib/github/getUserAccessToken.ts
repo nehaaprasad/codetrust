@@ -13,7 +13,7 @@ export async function getGitHubAccessTokenFromRequest(
   req: NextRequest,
 ): Promise<string | null> {
   let token = await getToken({ req, secret: authSecret() });
-  let t = token?.githubAccessToken;
+  let t = token?.githubAccessToken ?? token?.accessToken;
   if (typeof t === "string") return t;
 
   /** App Router: cookie on `headers()` can be more reliable than `req` alone. */
@@ -25,7 +25,7 @@ export async function getGitHubAccessTokenFromRequest(
       req: new Request(req.url, { headers: { cookie } }),
       secret: authSecret(),
     });
-    t = token?.githubAccessToken;
+    t = token?.githubAccessToken ?? token?.accessToken;
     return typeof t === "string" ? t : null;
   } catch {
     return null;

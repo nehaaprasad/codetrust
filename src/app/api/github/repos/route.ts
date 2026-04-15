@@ -3,6 +3,8 @@ import type { NextRequest } from "next/server";
 import { fetchUserRepos } from "@/lib/github/repos";
 import { getGitHubAccessTokenFromRequest } from "@/lib/github/getUserAccessToken";
 
+export const runtime = "nodejs";
+
 /**
  * GET /api/github/repos
  * Repositories for the signed-in user (OAuth). Requires GitHub sign-in with `repo` scope.

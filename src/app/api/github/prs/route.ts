@@ -3,6 +3,8 @@ import type { NextRequest } from "next/server";
 import { fetchRepoPullRequests } from "@/lib/github/listPrs";
 import { getGitHubAccessTokenFromRequest } from "@/lib/github/getUserAccessToken";
 
+export const runtime = "nodejs";
+
 /**
  * GET /api/github/prs?owner=X&repo=Y&state=open|all|closed
  * Lists PRs; for **forks**, resolves to **upstream** so PRs match GitHub’s main flow.

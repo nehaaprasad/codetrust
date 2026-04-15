@@ -31,6 +31,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, account }) {
       if (account?.access_token && typeof account.access_token === "string") {
         token.githubAccessToken = account.access_token;
+        // Some tooling expects a generic name; keep both.
+        token.accessToken = account.access_token;
       }
       return token;
     },
