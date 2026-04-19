@@ -85,6 +85,7 @@ model Analysis {
   /** Per-dimension scores 0–100 (security, logic, …). */
   dimensionScores  Json?
   inputJson        Json?
+  outcome          String?
   createdAt        DateTime @default(now())
   issues           Issue[]
   sources          Source[]

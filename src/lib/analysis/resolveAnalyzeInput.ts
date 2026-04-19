@@ -38,12 +38,23 @@ export async function resolveAnalyzeInput(
     if (isDatabaseConfigured()) {
       const prisma = getPrisma();
       const repoKey = canonicalRepoUrl(pr.repoUrl);
-      const project = await prisma.project.upsert({
-        where: { repoUrl: repoKey },
-        create: { repoUrl: repoKey, name: pr.title },
-        update: { name: pr.title },
-      });
-      projectId = project.id;
+      // If projectId was passed, use that; otherwise upsert based on repoUrl
+      if (body.projectId) {
+        const existing = await prisma.project.findUnique({
+          where: { id: body.projectId },
+        });
+        if (existing) {
+          projectId = existing.id;
+        }
+      }
+      if (!projectId) {
+        const project = await prisma.project.upsert({
+          where: { repoUrl: repoKey },
+          create: { repoUrl: repoKey, name: pr.title },
+          update: { name: pr.title },
+        });
+        projectId = project.id;
+      }
     }
     return {
       files: pr.files,
@@ -56,13 +67,23 @@ export async function resolveAnalyzeInput(
   }
 
   if (body.files && body.files.length > 0) {
+    let projectId: string | null = null;
+    if (body.projectId && isDatabaseConfigured()) {
+      const prisma = getPrisma();
+      const existing = await prisma.project.findUnique({
+        where: { id: body.projectId },
+      });
+      if (existing) {
+        projectId = existing.id;
+      }
+    }
     return {
       files: body.files,
       stored: {
         kind: "paste",
         files: body.files.map((f) => ({ path: f.path, content: f.content })),
       },
-      projectId: null,
+      projectId,
       parsedPr: null,
       workspaceId: body.workspaceId ?? null,
     };
@@ -70,13 +91,23 @@ export async function resolveAnalyzeInput(
 
   if (body.code?.trim()) {
     const content = body.code.trim();
+    let projectId: string | null = null;
+    if (body.projectId && isDatabaseConfigured()) {
+      const prisma = getPrisma();
+      const existing = await prisma.project.findUnique({
+        where: { id: body.projectId },
+      });
+      if (existing) {
+        projectId = existing.id;
+      }
+    }
     return {
       files: [{ path: "pasted/snippet.txt", content }],
       stored: {
         kind: "paste",
         files: [{ path: "pasted/snippet.txt", content }],
       },
-      projectId: null,
+      projectId,
       parsedPr: null,
       workspaceId: body.workspaceId ?? null,
     };

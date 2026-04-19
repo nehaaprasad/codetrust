@@ -18,5 +18,6 @@ export async function processAnalyzeJob(job: Job<AnalyzeJobData>) {
   return runPreparedAnalyze(prepared, job, {
     userId: job.data.userId ?? null,
     apiKeyId: job.data.apiKeyId ?? null,
+    projectId: job.data.projectId,
   });
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -90,10 +91,25 @@ function AnalyzeContent() {
   const { data: session } = useSession();
   const [code, setCode] = useState("");
   const [prUrl, setPrUrl] = useState("");
+  const [selectedProject, setSelectedProject] = useState("");
+  const [projectInput, setProjectInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [inline, setInline] = useState<AnalyzeResponse | null>(null);
   const [queueHint, setQueueHint] = useState<string | null>(null);
+
+  const projectsQ = useQuery({
+    queryKey: ["projects"],
+    queryFn: async () => {
+      const res = await fetch("/api/projects");
+      const data = (await res.json()) as Array<{
+        id: string;
+        name: string;
+        repoUrl: string;
+      }>;
+      return Array.isArray(data) ? data : [];
+    },
+  });
 
   useEffect(() => {
     const p = searchParams.get("prUrl");
@@ -114,6 +130,29 @@ function AnalyzeContent() {
         setError("Paste code or enter a GitHub pull request URL.");
         setLoading(false);
         return;
+      }
+
+      // Handle project: either existing or create new
+      if (selectedProject === "__new__" && projectInput.trim()) {
+        // Create project via API
+        const projectRes = await fetch("/api/projects", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: projectInput.trim(),
+            repoUrl: prUrl.trim() || `paste://${Date.now()}`,
+          }),
+        });
+        if (projectRes.ok) {
+          const projectData = (await projectRes.json()) as { id: string };
+          body.projectId = projectData.id;
+        }
+      } else if (selectedProject && selectedProject !== "__new__") {
+        // Use existing project - find by name
+        const existingProject = projectsQ.data?.find((p) => p.name === selectedProject);
+        if (existingProject) {
+          body.projectId = existingProject.id;
+        }
       }
 
       const res = await fetch("/api/analyze", {
@@ -240,6 +279,39 @@ function AnalyzeContent() {
                   className="font-mono text-sm leading-relaxed"
                 />
               </div>
+
+              {prUrl.trim() || code.trim() ? (
+                <div className="space-y-2">
+                  <label htmlFor="project" className="text-sm font-medium">
+                    Save to project (optional)
+                  </label>
+                  <Input
+                    id="project"
+                    type="text"
+                    name="project"
+                    list="projects-list"
+                    placeholder="Select or type to create project"
+                    value={selectedProject === "__new__" ? projectInput : selectedProject}
+                    onChange={(e) => {
+                      if (e.target.value === "") {
+                        setSelectedProject("");
+                        setProjectInput("");
+                      } else if (!projectsQ.data?.some((p) => p.name === e.target.value)) {
+                        setSelectedProject("__new__");
+                        setProjectInput(e.target.value);
+                      } else {
+                        setSelectedProject(e.target.value);
+                        setProjectInput("");
+                      }
+                    }}
+                  />
+                  <datalist id="projects-list">
+                    {projectsQ.data?.map((p) => (
+                      <option key={p.id} value={p.name} />
+                    ))}
+                  </datalist>
+                </div>
+              ) : null}
 
               {queueHint ? (
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">{queueHint}</p>

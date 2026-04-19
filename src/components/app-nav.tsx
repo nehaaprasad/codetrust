@@ -11,6 +11,7 @@ const links = [
   { href: "/analyze", label: "Analyze" },
   { href: "/connect", label: "Connect" },
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/projects", label: "Projects" },
 ] as const;
 
 export function AppNav() {

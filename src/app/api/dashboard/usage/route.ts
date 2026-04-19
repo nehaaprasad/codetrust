@@ -17,7 +17,7 @@ export async function GET() {
   const prisma = getPrisma();
   const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const [totalAnalyses, last7Days, decisionGroups, apiKeys] = await Promise.all([
+  const [totalAnalyses, last7Days, decisionGroups, apiKeys, outcomeStats] = await Promise.all([
     prisma.analysis.count({ where: { userId } }),
     prisma.analysis.count({
       where: { userId, createdAt: { gte: since7d } },
@@ -40,7 +40,27 @@ export async function GET() {
         _count: { select: { analyses: true } },
       },
     }),
+    prisma.analysis.aggregate({
+      where: {
+        userId,
+        outcome: { not: null },
+        decision: { in: ["SAFE", "RISKY"] },
+      },
+      _count: { _all: true },
+    }),
   ]);
+
+  // Count correct verdicts: SAFE + clean, or RISKY + incident
+  const correctVerdicts = await prisma.analysis.count({
+    where: {
+      userId,
+      outcome: { not: null },
+      OR: [
+        { decision: "SAFE", outcome: "clean" },
+        { decision: "RISKY", outcome: "incident" },
+      ],
+    },
+  });
 
   const byDecision = { SAFE: 0, RISKY: 0, BLOCK: 0 };
   for (const row of decisionGroups) {
@@ -54,6 +74,13 @@ export async function GET() {
     totalAnalyses,
     last7Days,
     byDecision,
+    outcomeAccuracy: {
+      totalWithOutcome: outcomeStats._count._all,
+      correct: correctVerdicts,
+      percentage: outcomeStats._count._all > 0
+        ? Math.round((correctVerdicts / outcomeStats._count._all) * 100)
+        : 0,
+    },
     apiKeys: apiKeys.map((k) => ({
       id: k.id,
       name: k.name,

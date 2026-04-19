@@ -6,6 +6,7 @@ export type AnalyzeJobData =
       mode: "pr";
       prUrl: string;
       workspaceId?: string;
+      projectId?: string;
       userId?: string | null;
       apiKeyId?: string | null;
     }
@@ -14,13 +15,18 @@ export type AnalyzeJobData =
       code?: string;
       files?: Array<{ path: string; content: string }>;
       workspaceId?: string;
+      projectId?: string;
       userId?: string | null;
       apiKeyId?: string | null;
     };
 
-function workspaceFromBody(body: AnalyzeBody): { workspaceId?: string } {
+function workspaceFromBody(body: AnalyzeBody): { workspaceId?: string; projectId?: string } {
   const w = body.workspaceId?.trim();
-  return w ? { workspaceId: w } : {};
+  const p = body.projectId?.trim();
+  return {
+    ...(w ? { workspaceId: w } : {}),
+    ...(p ? { projectId: p } : {}),
+  };
 }
 
 export function analyzeBodyToJobData(
@@ -54,11 +60,15 @@ export function jobDataToAnalyzeBody(data: AnalyzeJobData): AnalyzeBody {
     data.workspaceId != null && data.workspaceId !== ""
       ? { workspaceId: data.workspaceId }
       : {};
+  const p =
+    data.projectId != null && data.projectId !== ""
+      ? { projectId: data.projectId }
+      : {};
   if (data.mode === "pr") {
-    return { prUrl: data.prUrl, ...ws };
+    return { prUrl: data.prUrl, ...ws, ...p };
   }
   if (data.files && data.files.length > 0) {
-    return { files: data.files, ...ws };
+    return { files: data.files, ...ws, ...p };
   }
-  return { code: data.code ?? "", ...ws };
+  return { code: data.code ?? "", ...ws, ...p };
 }

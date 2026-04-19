@@ -51,6 +51,7 @@ type AnalysisPayload = {
   prCommentId: string | null;
   dimensionScores: Record<string, number> | null;
   createdAt: string;
+  outcome: string | null;
   issues: {
     category: string;
     severity: string;
@@ -511,6 +512,10 @@ export default function ResultPage() {
             </Link>
           ) : null}
         </div>
+
+        {(data.decision === "SAFE" || data.decision === "RISKY") ? (
+          <OutcomeFeedback analysisId={id} currentOutcome={data.outcome} />
+        ) : null}
       </main>
     </Shell>
   );
@@ -555,6 +560,84 @@ function RerunButton({ analysisId }: { analysisId: string }) {
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
           {error}
         </p>
+      ) : null}
+    </div>
+  );
+}
+
+function OutcomeFeedback({
+  analysisId,
+  currentOutcome,
+}: {
+  analysisId: string;
+  currentOutcome: string | null;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(!!currentOutcome);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submitOutcome(outcome: "incident" | "clean") {
+    setError(null);
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/analysis/${analysisId}/outcome`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ outcome }),
+      });
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        setError(data.error ?? "Failed to submit feedback.");
+        setSubmitting(false);
+        return;
+      }
+      setSubmitted(true);
+    } catch {
+      setError("Network error.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (submitted) {
+    return (
+      <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-5 py-4 dark:border-zinc-800 dark:bg-zinc-900/40">
+        <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Feedback recorded. Thank you.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-5 py-4 dark:border-zinc-800 dark:bg-zinc-900/40">
+      <p className="mb-3 text-sm text-zinc-700 dark:text-zinc-300">
+        Did this code cause any issues in production?
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => submitOutcome("incident")}
+          disabled={submitting}
+          className="border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/40"
+        >
+          Yes, it caused a problem
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => submitOutcome("clean")}
+          disabled={submitting}
+          className="border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 dark:border-green-900/60 dark:text-green-400 dark:hover:bg-green-950/40"
+        >
+          No, it was fine
+        </Button>
+      </div>
+      {error ? (
+        <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
       ) : null}
     </div>
   );

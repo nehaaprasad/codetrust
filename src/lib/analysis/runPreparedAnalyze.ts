@@ -53,7 +53,7 @@ export type AnalyzePipelineJson = {
 export async function runPreparedAnalyze(
   input: PreparedAnalyzeInput,
   job?: ProgressJob,
-  persistContext?: { userId?: string | null; apiKeyId?: string | null },
+  persistContext?: { userId?: string | null; apiKeyId?: string | null; projectId?: string },
 ): Promise<AnalyzePipelineJson> {
   const { files, stored, projectId, parsedPr, workspaceId, prDiff } = input;
 

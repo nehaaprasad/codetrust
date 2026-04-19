@@ -59,6 +59,11 @@ type UsagePayload = {
   totalAnalyses: number;
   last7Days: number;
   byDecision: { SAFE: number; RISKY: number; BLOCK: number };
+  outcomeAccuracy: {
+    totalWithOutcome: number;
+    correct: number;
+    percentage: number;
+  };
   apiKeys: Array<{
     id: string;
     name: string;
@@ -268,6 +273,22 @@ export default function DashboardPage() {
                     </CardHeader>
                   </Card>
                 </div>
+
+                {usageQ.data.outcomeAccuracy.totalWithOutcome > 0 ? (
+                  <Card className="overflow-hidden rounded-xl border-zinc-200/90 bg-white/90 shadow-lg shadow-zinc-900/5 backdrop-blur-sm dark:border-zinc-700/60 dark:bg-zinc-950/50 dark:shadow-[0_0_0_1px_rgba(63,63,70,0.4),0_16px_48px_-20px_rgba(0,0,0,0.4)]">
+                    <CardHeader className="pb-2">
+                      <CardDescription className="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        Verdict accuracy
+                      </CardDescription>
+                      <CardTitle className="text-4xl font-bold tabular-nums tracking-tight">
+                        {usageQ.data.outcomeAccuracy.percentage}%
+                      </CardTitle>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                        {usageQ.data.outcomeAccuracy.correct} / {usageQ.data.outcomeAccuracy.totalWithOutcome} correct
+                      </p>
+                    </CardHeader>
+                  </Card>
+                ) : null}
 
                 <Card className="overflow-hidden rounded-2xl border-zinc-200/90 dark:border-zinc-700/55">
                   <CardHeader>

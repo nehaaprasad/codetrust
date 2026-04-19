@@ -41,6 +41,7 @@ export async function GET(
     modelVersion: row.modelVersion,
     dimensionScores: parseStoredDimensionScores(row.dimensionScores),
     createdAt: row.createdAt.toISOString(),
+    outcome: row.outcome,
     issues: row.issues.map((i) => ({
       category: i.category,
       severity: i.severity,
