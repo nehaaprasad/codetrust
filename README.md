@@ -2,7 +2,7 @@
 
 Local web app that runs **deterministic checks** on pasted code or a GitHub PR, optionally adds an **OpenAI JSON review pass** when `OPENAI_API_KEY` is set, then combines everything into a **weighted score** and a **ship verdict** (SAFE / RISKY / BLOCK). Results can be stored in Postgres.
 
-**Async analysis:** when `REDIS_URL` is set, `POST /api/analyze` returns **202** with a `jobId` and runs the pipeline in a **BullMQ worker** (`npm run worker`). Set `USE_ASYNC_ANALYSIS=false` to keep the request synchronous even if Redis is available. **GitHub sign-in** uses Auth.js (`/api/auth/*`); create a [GitHub OAuth App](https://github.com/settings/developers) with callback URL `http://localhost:3000/api/auth/callback/github` and set `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`, and `AUTH_SECRET`. For PR URLs, the app can **post a summary comment** when `GITHUB_TOKEN` has permission (`GITHUB_POST_PR_COMMENT=false` to disable). **Re-run** updates that same comment when `prCommentId` is stored; if the comment was deleted on GitHub, it creates a new one.
+**Async analysis:** when `REDIS_URL` is set, `POST /api/analyze` returns **202** with a `jobId` and runs the pipeline in a **BullMQ worker** (`npm run worker`). Set `USE_ASYNC_ANALYSIS=false` to keep the request synchronous even if Redis is available. **GitHub sign-in** uses Auth.js (`/api/auth/*`); create a [GitHub OAuth App](https://github.com/settings/developers) with callback URL **`http://localhost:3000/api/auth/callback/github`** locally and set `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`, and `AUTH_SECRET`. For **deployed** environments, set **`AUTH_URL`** to the site’s canonical origin (e.g. `https://your-app.vercel.app`) and register **`https://<same-host>/api/auth/callback/github`** in the OAuth app’s callback URLs (add localhost, production, and **preview** URLs as needed, or use **separate** OAuth apps per environment). For PR URLs, the app can **post a summary comment** when `GITHUB_TOKEN` has permission (`GITHUB_POST_PR_COMMENT=false` to disable). **Re-run** updates that same comment when `prCommentId` is stored; if the comment was deleted on GitHub, it creates a new one.
 
 ### Where the backend lives
 
@@ -82,11 +82,11 @@ If `OPENAI_API_KEY` is missing or `ENABLE_LLM=false`, the OpenAI step is skipped
 | `src/lib/queue/` | BullMQ queue, Redis connection, job payload helpers |
 | `src/worker.ts` | BullMQ worker process (run beside `npm run dev`) |
 | `src/auth.ts` | Auth.js / GitHub OAuth config |
-| `src/app/api/` | `analyze`, `jobs/[jobId]`, `analysis/*`, `auth/[...nextauth]`, `github/webhook` |
+| `src/app/api/` | `analyze`, `jobs/[jobId]`, `analysis/*`, `auth/[...nextauth]`, `github/repos`, `github/prs`, `github/webhook` |
 | `src/app/` | UI: landing, `dashboard`, `results/[id]` |
 | `src/components/ui/` | shadcn-style primitives (Button, Card, …) |
 | `src/stores/` | Zustand UI state (e.g. dashboard filter) |
-| `prisma/schema.prisma` | `Project`, `Analysis`, `Issue`, `Source` |
+| `prisma/schema.prisma` | `Project`, `Analysis`, `Issue`, `Source`, workspaces, `ApiKey`, … |
 
 ---
 
@@ -114,9 +114,10 @@ Copy `.env.example` to `.env` and set at least:
 | `ENABLE_LLM` | No | Set to `false` to force rules-only even with a key |
 | `REDIS_URL` | No | e.g. `redis://127.0.0.1:6379` — enables async analyze (202 + worker) |
 | `USE_ASYNC_ANALYSIS` | No | Set `false` to run analysis inline even when `REDIS_URL` is set |
-| `AUTH_SECRET` | For sign-in | Random string; a dev fallback exists in code — set in production |
+| `AUTH_SECRET` | For sign-in | Random string for Auth.js (session signing); not the same as `AUTH_GITHUB_SECRET` |
+| `AUTH_URL` | Deployments | Canonical site URL with no trailing slash (e.g. `https://your-domain.com`) so OAuth redirects match the deployed host |
 | `AUTH_GITHUB_ID` | For sign-in | GitHub OAuth App client id |
-| `AUTH_GITHUB_SECRET` | For sign-in | GitHub OAuth App secret |
+| `AUTH_GITHUB_SECRET` | For sign-in | GitHub OAuth App **client** secret from Developer settings |
 | `GITHUB_WEBHOOK_SECRET` | For **webhooks** | Shared secret; required for `POST /api/github/webhook` |
 
 **2. Database**
@@ -137,6 +138,11 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+### Production (e.g. Vercel)
+
+- Set **`DATABASE_URL`** if you use saved analyses, the dashboard, API keys, or shareable `/results/:id` links; without it, the app may show a “database not configured” notice.
+- Set **`AUTH_SECRET`**, **`AUTH_GITHUB_ID`**, **`AUTH_GITHUB_SECRET`**, and **`AUTH_URL`** (same origin as users visit — no trailing slash). The GitHub OAuth app must list **`{AUTH_URL}/api/auth/callback/github`** among **Authorization callback URLs** (add preview hostnames too, or use another OAuth app for previews).
 
 **4. Optional: Redis + worker (async analysis)**
 
@@ -179,10 +185,15 @@ Run the worker in a second terminal while using the app; otherwise queued jobs s
 | `GET` | `/api/api-keys` | List your API keys (metadata only); needs DB + session |
 | `POST` | `/api/api-keys` | Create key; response includes `key` **once**; needs DB + session |
 | `DELETE` | `/api/api-keys/:id` | Revoke key; needs DB + session |
+| `GET` | `/api/github/repos` | Signed-in user’s repos (OAuth token); **401** if not signed in or token missing |
+| `GET` | `/api/github/prs?owner=&repo=&state=` | Lists PRs for a repo; OAuth **or** `GITHUB_TOKEN`; **401** if neither available |
 | `POST` | `/api/github/webhook` | GitHub **pull_request** events: verifies `X-Hub-Signature-256` with `GITHUB_WEBHOOK_SECRET`, enqueues PR analysis when `REDIS_URL` + async worker are available |
+
+List-repo and list-PR routes run on the **Node.js** runtime so session/JWT cookies decode reliably in production.
 
 ### GitHub webhook (v1)
 
 1. In the repo → **Settings → Webhooks → Add webhook**: Payload URL `https://<your-host>/api/github/webhook`, content type **application/json**, secret = **same value** as `GITHUB_WEBHOOK_SECRET` in `.env`.
 2. Enable events: **Pull requests** (or individual: `opened`, `synchronize`, `reopened`, `ready_for_review`).
 3. Run **Redis** and **npm run worker** so queued jobs execute; without `REDIS_URL` the endpoint still returns **200** with `{ skipped: true, reason: ... }` so GitHub does not retry on missing infra.
+
