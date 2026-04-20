@@ -1,6 +1,7 @@
 import { Octokit } from "@octokit/rest";
 import type { AnalysisResult } from "@/lib/analysis/run";
 import type { AnalysisIssue } from "@/lib/analysis/types";
+import { buildEvidenceLink, type EvidenceContext } from "./evidenceLinks";
 import type { ParsedPrUrl } from "./parsePrUrl";
 
 const MAX_BODY = 62_000;
@@ -31,6 +32,7 @@ export function buildPrCommentBody(
     AnalysisResult,
     "score" | "decision" | "summary" | "issues" | "modelVersion"
   >,
+  evidence?: EvidenceContext,
 ): string {
   const lines: string[] = [
     "### AI Code Trust — ship readiness",
@@ -49,7 +51,7 @@ export function buildPrCommentBody(
       const shown = g.occurrences.slice(0, MAX_OCCURRENCES_SHOWN_PER_GROUP);
       const extra = g.occurrences.length - shown.length;
       if (shown.length > 0) {
-        const locs = shown.map((o) => `\`${formatLocation(o)}\``).join(", ");
+        const locs = shown.map((o) => renderLocation(o, evidence)).join(", ");
         const suffix = extra > 0 ? ` _(+${extra} more)_` : "";
         const label = g.occurrences.length === 1 ? "  _at_" : "  _across_";
         lines.push(`${label} ${locs}${suffix}`);
@@ -134,6 +136,22 @@ function sortAndTrimGroups(groups: IssueGroup[]): IssueGroup[] {
 function formatLocation(o: GroupedOccurrence): string {
   if (!o.filePath) return "project";
   return o.lineNumber != null ? `${o.filePath}:${o.lineNumber}` : o.filePath;
+}
+
+/**
+ * Render a finding's location either as a plain inline-code span (no PR
+ * context / no file path) or as a markdown link pointing at the exact line
+ * on GitHub at the PR's head SHA. The link text keeps the inline-code
+ * formatting so grouped locations read consistently whether or not we had
+ * a SHA to build permalinks with.
+ */
+function renderLocation(
+  o: GroupedOccurrence,
+  evidence: EvidenceContext | undefined,
+): string {
+  const label = `\`${formatLocation(o)}\``;
+  const url = buildEvidenceLink(evidence, o.filePath, o.lineNumber);
+  return url ? `[${label}](${url})` : label;
 }
 
 export type PrCommentRef = {

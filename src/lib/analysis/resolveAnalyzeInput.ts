@@ -14,6 +14,14 @@ export type PreparedAnalyzeInput = {
   parsedPr: ParsedPrUrl | null;
   workspaceId: string | null;
   prDiff?: string;
+  /**
+   * PR head SHA, when the input came from a pull request. Used to build
+   * stable GitHub permalinks for each finding (see
+   * `src/lib/github/evidenceLinks.ts`). Not persisted yet — downstream
+   * callers pass it only to the immediate comment-builder, and the rerun
+   * path re-fetches the PR to obtain a fresh SHA.
+   */
+  prHeadSha?: string;
 };
 
 /**
@@ -63,6 +71,7 @@ export async function resolveAnalyzeInput(
       parsedPr: parsed,
       workspaceId: body.workspaceId ?? null,
       prDiff,
+      prHeadSha: pr.headSha,
     };
   }
 

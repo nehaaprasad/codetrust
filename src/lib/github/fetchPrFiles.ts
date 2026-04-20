@@ -40,7 +40,7 @@ const FULL_CONTENT_THRESHOLD_BYTES = 100 * 1024;
 export async function fetchPrFilesForAnalysis(
   prUrl: string,
   token: string,
-): Promise<{ files: CodeFile[]; repoUrl: string; title: string }> {
+): Promise<{ files: CodeFile[]; repoUrl: string; title: string; headSha: string }> {
   const parsed = parseGithubPrUrl(prUrl);
   if (!parsed) {
     throw new Error("Invalid GitHub pull request URL.");
@@ -106,6 +106,7 @@ export async function fetchPrFilesForAnalysis(
     files,
     repoUrl: repoUrlFromParsed(parsed),
     title: pr.title ?? `${owner}/${repo}#${pull_number}`,
+    headSha,
   };
 }
 

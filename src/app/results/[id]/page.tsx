@@ -102,6 +102,7 @@ type AnalysisPayload = {
   repoUrl: string | null;
   prUrl: string | null;
   prNumber: number | null;
+  prHeadSha: string | null;
   score: number;
   decision: string;
   previousScore: number | null;
@@ -135,6 +136,20 @@ type HistoryRow = {
   prNumber: number | null;
   createdAt: string;
 };
+
+/**
+ * Build an EvidenceContext (owner/repo/headSha) from the stored analysis
+ * row so the issue list can deep-link each finding to its exact GitHub
+ * line. Returns `null` unless all three anchors are present — we don't
+ * want to render a half-broken link. The owner/repo are parsed from
+ * `repoUrl` (which is stored canonicalised by `canonicalRepoUrl`).
+ */
+function prEvidence(data: AnalysisPayload): { owner: string; repo: string; headSha: string } | null {
+  if (!data.prHeadSha?.trim() || !data.repoUrl) return null;
+  const m = /^https?:\/\/[^/]+\/([^/]+)\/([^/]+?)(?:\.git)?\/?$/.exec(data.repoUrl);
+  if (!m) return null;
+  return { owner: m[1], repo: m[2], headSha: data.prHeadSha.trim() };
+}
 
 function SameRepoHistory({
   repoUrl,
@@ -536,7 +551,10 @@ export default function ResultPage() {
               Expand each row for why it matters and where it was detected.
             </p>
           </div>
-          <IssueDetailList issues={data.issues} />
+          <IssueDetailList
+            issues={data.issues}
+            evidence={prEvidence(data)}
+          />
         </section>
 
         {data.sources.length > 0 ? (

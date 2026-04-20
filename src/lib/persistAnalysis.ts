@@ -16,6 +16,9 @@ export async function saveAnalysis(
     repoUrl?: string | null;
     prUrl?: string | null;
     prNumber?: number | null;
+    /** PR head SHA captured at analysis time; used to build stable
+     *  GitHub deep-links on the result page. */
+    prHeadSha?: string | null;
     workspaceId?: string | null;
     userId?: string | null;
     apiKeyId?: string | null;
@@ -31,6 +34,7 @@ export async function saveAnalysis(
     repoUrl: options?.repoUrl ?? null,
     prUrl: options?.prUrl ?? null,
     prNumber: options?.prNumber ?? null,
+    prHeadSha: options?.prHeadSha ?? null,
     prCommentUrl: options?.prCommentUrl ?? null,
     prCommentId: options?.prCommentId ?? null,
     inputJson: input as Prisma.InputJsonValue,
@@ -75,6 +79,11 @@ export async function updateAnalysisRerun(
   analysisId: string,
   result: AnalysisResult,
   prComment?: { url: string | null; id: string | null } | null,
+  opts?: {
+    /** Fresh PR head SHA observed during this rerun; refreshes the stored
+     *  permalink target so the result page links to the new commit. */
+    prHeadSha?: string | null;
+  },
 ) {
   const prisma = getPrisma();
   const existing = await prisma.analysis.findUnique({
@@ -101,6 +110,7 @@ export async function updateAnalysisRerun(
             prCommentId: prComment.id,
           }
         : {}),
+      ...(opts?.prHeadSha !== undefined ? { prHeadSha: opts.prHeadSha } : {}),
       issues: {
         create: result.issues.map((i) => ({
           category: i.category,

@@ -31,6 +31,7 @@ export async function GET(
     repoUrl: row.repoUrl,
     prUrl: row.prUrl,
     prNumber: row.prNumber,
+    prHeadSha: row.prHeadSha,
     score: row.score,
     decision: row.decision,
     previousScore: row.previousScore,

@@ -74,6 +74,11 @@ model Analysis {
   /** Full PR URL when analysis was for a pull request. */
   prUrl            String?
   prNumber         Int?
+  /** PR head SHA captured at analysis time. Enables stable GitHub
+   *  permalinks from each finding on the result page — see
+   *  `src/lib/github/evidenceLinks.ts`. Null for paste runs and for
+   *  legacy analyses created before this column was added. */
+  prHeadSha        String?
   score            Int
   decision         String
   previousScore    Int?

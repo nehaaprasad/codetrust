@@ -41,6 +41,7 @@ export async function POST(
 
   const input = raw as StoredAnalysisInput;
   let files: CodeFile[];
+  let rerunHeadSha: string | undefined;
 
   if (input.kind === "paste") {
     if (!input.files?.length) {
@@ -58,6 +59,7 @@ export async function POST(
     try {
       const pr = await fetchPrFilesForAnalysis(input.prUrl, token);
       files = pr.files;
+      rerunHeadSha = pr.headSha;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to fetch pull request.";
       return NextResponse.json({ error: msg }, { status: 502 });
@@ -77,7 +79,10 @@ export async function POST(
     const parsed = parseGithubPrUrl(input.prUrl);
     if (parsed && shouldPost && token) {
       try {
-        const body = buildPrCommentBody(result);
+        const evidence = rerunHeadSha
+          ? { owner: parsed.owner, repo: parsed.repo, headSha: rerunHeadSha }
+          : undefined;
+        const body = buildPrCommentBody(result, evidence);
         const ref = await createOrUpdatePrComment(
           token,
           parsed,
@@ -91,7 +96,9 @@ export async function POST(
     }
   }
 
-  const updated = await updateAnalysisRerun(id, result, prCommentPatch);
+  const updated = await updateAnalysisRerun(id, result, prCommentPatch, {
+    prHeadSha: rerunHeadSha ?? null,
+  });
   if (!updated) {
     return NextResponse.json({ error: "Update failed." }, { status: 500 });
   }

@@ -55,7 +55,8 @@ export async function runPreparedAnalyze(
   job?: ProgressJob,
   persistContext?: { userId?: string | null; apiKeyId?: string | null; projectId?: string },
 ): Promise<AnalyzePipelineJson> {
-  const { files, stored, projectId, parsedPr, workspaceId, prDiff } = input;
+  const { files, stored, projectId, parsedPr, workspaceId, prDiff, prHeadSha } =
+    input;
 
   await job?.updateProgress({ stage: "analyzing" });
   const result = await analyzeFiles(files, {
@@ -74,7 +75,15 @@ export async function runPreparedAnalyze(
     const ghToken = process.env.GITHUB_TOKEN;
     if (shouldPost && ghToken) {
       try {
-        const commentBody = buildPrCommentBody(result);
+        const evidence =
+          prHeadSha?.trim()
+            ? {
+                owner: parsedPr.owner,
+                repo: parsedPr.repo,
+                headSha: prHeadSha,
+              }
+            : undefined;
+        const commentBody = buildPrCommentBody(result, evidence);
         const ref = await createOrUpdatePrComment(
           ghToken,
           parsedPr,
@@ -97,11 +106,13 @@ export async function runPreparedAnalyze(
             repoUrl: canonicalRepoUrl(repoUrlFromParsed(parsedPr)),
             prUrl: stored.prUrl.trim(),
             prNumber: parsedPr.pull_number,
+            prHeadSha: prHeadSha ?? null,
           }
         : {
             repoUrl: null as string | null,
             prUrl: null as string | null,
             prNumber: null as number | null,
+            prHeadSha: null as string | null,
           };
 
     const row = await saveAnalysis(result, stored, projectId, {
