@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { z } from "zod";
 import type { CodeFile } from "./checks";
+import type { ChangedFileRegion } from "./diff-parser";
 import type { AnalysisIssue } from "./types";
 
 const categorySchema = z.enum([
@@ -71,6 +72,17 @@ const MAX_CONTEXT_CHARS = 24_000;
  */
 export async function fetchLlmReview(
   files: CodeFile[],
+  opts?: {
+    /**
+     * If provided, the LLM receives a diff-scoped view of each file —
+     * added/modified lines prefixed with `>>` and surrounded by a few lines
+     * of context — instead of the full file. The prompt instructs the model
+     * to target the marked lines, which eliminates the "LLM comments on
+     * pre-existing code" failure mode that produces generic findings on
+     * refactor PRs.
+     */
+    changedRegions?: Record<string, ChangedFileRegion>;
+  },
 ): Promise<{
   issues: AnalysisIssue[];
   summaryNote?: string;
@@ -86,7 +98,12 @@ export async function fetchLlmReview(
     return null;
   }
 
-  const context = buildContext(files);
+  const useDiffContext =
+    opts?.changedRegions != null &&
+    Object.keys(opts.changedRegions).length > 0;
+  const context = useDiffContext
+    ? buildDiffContext(files, opts!.changedRegions!)
+    : buildFullFileContext(files);
   if (!context.trim()) {
     console.warn("[ai-review] skipped: empty context (no readable files)");
     return null;
@@ -107,9 +124,13 @@ export async function fetchLlmReview(
           content: [
             "You are a senior security-minded code reviewer. Respond with JSON only — no prose outside the JSON object.",
             "",
+            useDiffContext
+              ? "REVIEW SCOPE (diff-aware mode): each file below shows windows around the lines the pull request ADDS or MODIFIES. Lines prefixed with `>>` are those changed lines. Lines without `>>` are surrounding context shown so you understand what the change interacts with. Your findings MUST target the `>>` lines — either a bug introduced by a `>>` line, a contract break between a `>>` line and surrounding code, or a missing safeguard around the `>>` lines. Do NOT file findings that describe only context lines."
+              : "REVIEW SCOPE: review each file as a whole.",
+            "",
             "HARD RULES (violations mean the finding is wrong and must be dropped):",
             "",
-            "R1. Every finding must be grounded in the code shown to you. Cite filePath and lineNumber.",
+            "R1. Every finding must be grounded in the code shown to you. Cite filePath and the exact lineNumber from the `NN:` gutter.",
             "",
             "R2. BANNED WORDS in every `message` AND in `summaryNote`: may, might, could, possibly, potential, potentially, susceptible, in certain scenarios, should be improved, should consider.",
             "    If you cannot state the defect as a declarative fact ('X is Y' / 'X does Z'), OMIT the finding.",
@@ -142,7 +163,7 @@ export async function fetchLlmReview(
         {
           role: "user",
           content:
-            `Files to review (truncated):\n\n${context}\n\n` +
+            `${useDiffContext ? "Diff-scoped view of changes (lines with `>>` are changed; others are context):" : "Files to review (truncated):"}\n\n${context}\n\n` +
             'Return JSON in this exact shape: {"issues":[{"category":"security|logic|performance|testing|accessibility|maintainability","severity":"low|medium|high|critical","message":"declarative fact with file+line, no banned words","filePath":"path","lineNumber":number}],"summaryNote":"optional single declarative sentence, no banned words, or omit"}',
         },
       ],
@@ -262,7 +283,14 @@ function resolveProviderName(baseURL: string | undefined): string {
   return "custom";
 }
 
-function buildContext(files: CodeFile[]): string {
+/** Lines of surrounding context to include around each changed line. */
+const DIFF_CONTEXT_LINES = 4;
+
+/**
+ * Full-file context used when we have no diff information (direct code
+ * pastes, repo-root analysis, or a caller that didn't pass changedRegions).
+ */
+function buildFullFileContext(files: CodeFile[]): string {
   const parts: string[] = [];
   let total = 0;
   let n = 0;
@@ -279,6 +307,103 @@ function buildContext(files: CodeFile[]): string {
     n += 1;
   }
   return parts.join("\n\n");
+}
+
+/**
+ * Diff-aware context. For each file that the PR changed we emit windows of
+ * the post-PR file around each added/modified line, with the changed lines
+ * prefixed with `>>` so the LLM can tell them apart from pure context at a
+ * glance. Line numbers are printed in a `NN:` gutter so the model can cite
+ * them back in findings without having to guess hunk-relative offsets.
+ *
+ * Example output for a file where the PR added lines 45 and 46:
+ *
+ *   --- src/auth.ts ---
+ *      41:   export function verify(token: string) {
+ *      42:     const payload = decode(token);
+ *      43:     if (!payload) throw new Error("bad token");
+ *      44:     const userId = payload.sub;
+ *   >> 45:     const sql = `SELECT * FROM users WHERE id = ${userId}`;
+ *   >> 46:     return db.query(sql);
+ *      47:   }
+ *      48: }
+ *
+ * Windows that overlap (or sit within 2*CONTEXT_LINES of each other) are
+ * merged so a hunk spanning 20 added lines renders as one contiguous block
+ * instead of a comb of tiny windows.
+ *
+ * Files with zero added lines (pure deletions, or files untouched by this
+ * PR that we nevertheless fetched) are omitted — there is nothing for the
+ * LLM to review post-change.
+ */
+function buildDiffContext(
+  files: CodeFile[],
+  changedRegions: Record<string, ChangedFileRegion>,
+): string {
+  const parts: string[] = [];
+  let total = 0;
+  let n = 0;
+  for (const f of files) {
+    if (n >= MAX_FILES) break;
+    const region = changedRegions[f.path];
+    if (!region) continue;
+    if (region.addedLines.length === 0) continue;
+
+    const block = renderAnnotatedWindows(f, region);
+    if (!block.trim()) continue;
+    if (total + block.length > MAX_CONTEXT_CHARS) break;
+    parts.push(block);
+    total += block.length;
+    n += 1;
+  }
+  return parts.join("\n\n");
+}
+
+function renderAnnotatedWindows(
+  file: CodeFile,
+  region: ChangedFileRegion,
+): string {
+  const sourceLines = file.content.split(/\r?\n/);
+  const addedSet = new Set(region.addedLines.map((l) => l.lineNumber));
+
+  const windows: Array<{ start: number; end: number }> = [];
+  for (const ln of addedSet) {
+    windows.push({
+      start: Math.max(1, ln - DIFF_CONTEXT_LINES),
+      end: Math.min(sourceLines.length, ln + DIFF_CONTEXT_LINES),
+    });
+  }
+  windows.sort((a, b) => a.start - b.start);
+
+  const merged: Array<{ start: number; end: number }> = [];
+  for (const w of windows) {
+    const last = merged[merged.length - 1];
+    if (last && w.start <= last.end + 1) {
+      last.end = Math.max(last.end, w.end);
+    } else {
+      merged.push({ ...w });
+    }
+  }
+
+  const out: string[] = [`--- ${file.path} ---`];
+  let rendered = 0;
+  for (let i = 0; i < merged.length; i++) {
+    if (rendered > MAX_CHARS_PER_FILE) {
+      out.push("   … [remaining windows truncated]");
+      break;
+    }
+    if (i > 0) out.push("   … [skipped unchanged lines] …");
+    const w = merged[i];
+    for (let ln = w.start; ln <= w.end; ln++) {
+      const marker = addedSet.has(ln) ? ">>" : "  ";
+      const gutter = String(ln).padStart(4);
+      const body = sourceLines[ln - 1] ?? "";
+      const row = `${marker} ${gutter}: ${body}`;
+      out.push(row);
+      rendered += row.length + 1;
+    }
+  }
+  return out.join("\n");
 }
 
 /**
@@ -339,3 +464,13 @@ export function mergeIssues(
   }
   return out;
 }
+
+/**
+ * Test-only surface: exposes the internal context builders so scenario
+ * tests can verify the rendered format without making a real API call.
+ * Keep this tiny — anything added here becomes API surface.
+ */
+export const __testing = {
+  buildDiffContext,
+  buildFullFileContext,
+};

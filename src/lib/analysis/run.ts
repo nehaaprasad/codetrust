@@ -148,7 +148,20 @@ export async function analyzeFiles(
   let summaryNote: string | undefined;
   let usedLlm = false;
 
-  const llm = await fetchLlmReview(files);
+  // PR-aware analysis: run targeted checks on changed lines. We need
+  // `changedRegions` BEFORE the LLM call so we can give the model a
+  // diff-scoped view of each file instead of the whole post-PR state.
+  // Reviewing the whole file produces generic findings about
+  // pre-existing code; reviewing the diff produces findings about what
+  // the PR actually introduced, which is what a senior reviewer does.
+  let prFeedback: PrFeedback | undefined;
+  let prFilteredIssues = merged;
+  let changedRegions: Record<string, ChangedFileRegion> = {};
+  if (options?.prDiff) {
+    changedRegions = extractChangedLines(options.prDiff).files;
+  }
+
+  const llm = await fetchLlmReview(files, { changedRegions });
   let llmProvider = "openai";
   if (llm) {
     merged = mergeIssues(merged, llm.issues);
@@ -157,13 +170,7 @@ export async function analyzeFiles(
     llmProvider = llm.provider;
   }
 
-  // PR-aware analysis: run targeted checks on changed lines
-  let prFeedback: PrFeedback | undefined;
-  let prFilteredIssues = merged;
-  let changedRegions: Record<string, ChangedFileRegion> = {};
-
   if (options?.prDiff) {
-    changedRegions = extractChangedLines(options.prDiff).files;
     const prIssues = runPrChecks(files, changedRegions);
 
     if (prIssues.length > 0) {
