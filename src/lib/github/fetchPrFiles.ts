@@ -11,22 +11,31 @@ const MAX_FILE_BYTES = 256 * 1024;
 const MAX_FILES = 80;
 
 /**
- * Build per-file analysis inputs from a PR's **diff patches** rather than
- * downloading each head-ref blob in full. This is the "changed code only"
- * view: we extract the added + context lines from each unified diff hunk
- * and pass them through as if they were the file's content.
+ * Size threshold (bytes) below which we feed the **full file** through to
+ * the analyzer. At or above this we fall back to the diff patch (changed
+ * hunks only). Small files get accurate project-wide signals (length,
+ * cross-line patterns, existing issues the PR didn't touch); large files
+ * still get *some* analysis instead of crashing the 1.5 MB combined cap.
+ */
+const FULL_CONTENT_THRESHOLD_BYTES = 100 * 1024;
+
+/**
+ * Build per-file analysis inputs for a PR using a **hybrid** strategy:
  *
- * Why patches instead of full files:
- *   - Analysis scales with the size of the **change**, not the repo. A 94-
- *     file PR against a large codebase is usually well under a megabyte of
- *     actual diff, even when the head-ref files combined are tens of MB.
- *   - One API call (`pulls.listFiles`) instead of N `repos.getContent` calls.
- *   - Checks run on code the PR is actually introducing, which matches the
- *     product promise (PR-aware trust feedback).
+ *   - Small/medium files (< `FULL_CONTENT_THRESHOLD_BYTES`): fetch the full
+ *     file at the PR's head via `repos.getContent`. This preserves the
+ *     pre-patches behaviour where checks can inspect the entire file and
+ *     find issues outside the changed hunks.
+ *   - Large files (>= threshold) or files whose blob GitHub won't inline:
+ *     fall back to the PR's diff patch (added + context lines only). This
+ *     stops one huge generated file from blowing the combined-bytes cap.
+ *   - Files where neither path yields usable text are skipped.
  *
- * Trade-off: line numbers reported by checks refer to positions within the
- * extracted hunks, not the full file. That's acceptable for this pipeline —
- * issues still carry a `filePath` and the UI surfaces the diff separately.
+ * Note on sizing: GitHub's `diff-entry` objects returned by `pulls.listFiles`
+ * do NOT expose a `size` field (only `additions`/`deletions`/`changes`).
+ * The authoritative file size is returned by `repos.getContent`, so that is
+ * the field consulted here; the single call both tells us how big the file
+ * is and hands us the content when it's small enough to use directly.
  */
 export async function fetchPrFilesForAnalysis(
   prUrl: string,
@@ -46,6 +55,7 @@ export async function fetchPrFilesForAnalysis(
     pull_number,
   });
 
+  const headSha = pr.head.sha;
   const { data: prFiles } = await octokit.pulls.listFiles({
     owner,
     repo,
@@ -59,17 +69,33 @@ export async function fetchPrFilesForAnalysis(
     if (f.status === "removed" || !f.filename) continue;
     if (shouldSkipPath(f.filename)) continue;
 
-    // `patch` is omitted by GitHub for binary files, very large diffs, or
-    // pure renames without content changes. Skip — nothing to analyze.
     const patch = (f as { patch?: string }).patch;
+
+    // 1) Try full content for small/medium files.
+    const fullContent = await tryFetchFullContent(octokit, {
+      owner,
+      repo,
+      path: f.filename,
+      ref: headSha,
+    });
+
+    if (fullContent && fullContent.size < FULL_CONTENT_THRESHOLD_BYTES) {
+      const text = fullContent.text;
+      if (text && !/\0/.test(text) && Buffer.byteLength(text, "utf8") <= MAX_FILE_BYTES) {
+        files.push({ path: f.filename, content: text });
+        continue;
+      }
+    }
+
+    // 2) Fall back to patch-derived content for large files (or when
+    //    getContent couldn't deliver usable text).
     if (!patch) continue;
+    const patchContent = extractAddedAndContext(patch);
+    if (!patchContent) continue;
+    if (/\0/.test(patchContent)) continue;
+    if (Buffer.byteLength(patchContent, "utf8") > MAX_FILE_BYTES) continue;
 
-    const content = extractAddedAndContext(patch);
-    if (!content) continue;
-    if (Buffer.byteLength(content, "utf8") > MAX_FILE_BYTES) continue;
-    if (/\0/.test(content)) continue;
-
-    files.push({ path: f.filename, content });
+    files.push({ path: f.filename, content: patchContent });
   }
 
   if (files.length === 0) {
@@ -81,6 +107,32 @@ export async function fetchPrFilesForAnalysis(
     repoUrl: repoUrlFromParsed(parsed),
     title: pr.title ?? `${owner}/${repo}#${pull_number}`,
   };
+}
+
+/**
+ * Attempt to fetch a blob's full contents at `ref`. Returns the authoritative
+ * `size` reported by the Contents API plus decoded text when GitHub inlined
+ * the body. Returns `null` on error (binary, submodule, 404, etc.) — callers
+ * should then fall back to the diff patch.
+ */
+async function tryFetchFullContent(
+  octokit: Octokit,
+  args: { owner: string; repo: string; path: string; ref: string },
+): Promise<{ size: number; text: string | null } | null> {
+  try {
+    const { data } = await octokit.repos.getContent(args);
+    if (Array.isArray(data) || data.type !== "file") return null;
+    const size = typeof data.size === "number" ? data.size : 0;
+    // Files >1 MB come back with `content: ""` and encoding "none"; caller
+    // will fall through to the patch branch via the size threshold.
+    if (!("content" in data) || !data.content) {
+      return { size, text: null };
+    }
+    const buf = Buffer.from(data.content, "base64");
+    return { size, text: buf.toString("utf8") };
+  } catch {
+    return null;
+  }
 }
 
 /**
