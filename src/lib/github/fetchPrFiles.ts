@@ -166,7 +166,27 @@ function shouldSkipPath(path: string): boolean {
   const lower = path.toLowerCase();
   if (lower.includes("/node_modules/")) return true;
   if (lower.includes("/dist/") || lower.includes("/build/")) return true;
+  if (lower.includes("/.next/") || lower.includes("/.turbo/")) return true;
   if (/\.(png|jpg|jpeg|gif|webp|ico|pdf|zip|gz|woff2?|ttf|eot)$/i.test(path))
     return true;
+  // Lockfiles: machine-generated, huge, always noise in any code-review tool.
+  // Keeping them out frees up the 80-file budget and the combined-bytes cap
+  // for files where the rules can actually produce signal.
+  const basename = path.split("/").pop()?.toLowerCase() ?? "";
+  const lockFileNames = new Set([
+    "bun.lock",
+    "bun.lockb",
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "cargo.lock",
+    "go.sum",
+    "poetry.lock",
+    "pipfile.lock",
+    "composer.lock",
+    "gemfile.lock",
+    "flake.lock",
+  ]);
+  if (lockFileNames.has(basename)) return true;
   return false;
 }
