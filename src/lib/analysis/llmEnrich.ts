@@ -104,19 +104,29 @@ export async function fetchLlmReview(
       messages: [
         {
           role: "system",
-          content:
-            "You review code for release readiness. Respond with JSON only. " +
-            "List issues that simple pattern scanners often miss: edge cases, error handling, " +
-            "contracts between modules, risky assumptions, shallow tests, accessibility gaps. " +
-            "Use the same categories and severities as in the schema. " +
-            "Avoid vague praise; each issue must be actionable. " +
-            "If code looks fine for deeper review, return few or zero issues.",
+          content: [
+            "You are a senior code reviewer deciding whether a pull request is ready to ship.",
+            "Respond with JSON only — no prose outside the JSON object.",
+            "",
+            "Rules for findings:",
+            "1. Every issue must be grounded in the code you were given. Cite filePath and a line number when the evidence is visible.",
+            "2. Do NOT speculate about code you cannot see (caller sites, downstream modules, unknown environments).",
+            "3. Do NOT use hedging words: may, might, could, possibly, potentially, susceptible, in certain scenarios. If you cannot state the problem definitively, omit it.",
+            "4. Do NOT flag stylistic preferences, code formatting, or generic 'consider adding tests / docs' suggestions.",
+            "5. Do NOT file issues on test fixtures or test-only files about missing error handling or missing tests — tests are allowed to let exceptions propagate.",
+            "6. Prefer high-signal findings: security vulnerabilities, data-loss bugs, logic errors, concurrency bugs, incorrect error handling, race conditions, input-validation holes, API contract breaks.",
+            "7. Severity rubric: critical = exploitable or data-loss; high = real bug reviewers would block on; medium = real issue but non-blocking; low = minor correctness nit. Do not inflate severities.",
+            "8. If the code looks solid after honest review, return an empty issues array. Padding with weak findings destroys trust.",
+            "",
+            "Use exactly these categories: security, logic, performance, testing, accessibility, maintainability.",
+            "Use exactly these severities: low, medium, high, critical.",
+          ].join("\n"),
         },
         {
           role: "user",
           content:
             `Files to review (truncated):\n\n${context}\n\n` +
-            "Return JSON: {\"issues\":[{\"category\":\"security|logic|performance|testing|accessibility|maintainability\",\"severity\":\"low|medium|high|critical\",\"message\":\"...\",\"filePath\":\"optional\",\"lineNumber\":null or number}],\"summaryNote\":\"optional short sentence\"}",
+            'Return JSON in this exact shape: {"issues":[{"category":"security|logic|performance|testing|accessibility|maintainability","severity":"low|medium|high|critical","message":"concrete problem, no hedging","filePath":"optional path","lineNumber":null or number}],"summaryNote":"optional one sentence, factual"}',
         },
       ],
     });

@@ -54,18 +54,55 @@ export function isDeeplySupportedLanguage(path: string): boolean {
   );
 }
 
-/** Is this path a dedicated test file by convention? */
+/**
+ * Is this path a dedicated test file by convention?
+ *
+ * Covers the patterns we actually see in real PRs across the languages the
+ * tool is meant to review. Getting this wrong has two concrete failure
+ * modes, both of which have happened and both of which look unserious:
+ *
+ *  1. A pytest `conftest.py` misclassified as source → the testing floor
+ *     injects "no tests alongside source" on a file that **is** the test
+ *     harness. (See ComfyUI PR #13247: sanitization fix in
+ *     `tests-unit/assets_test/conftest.py` was flagged as untested source.)
+ *  2. A file under `tests-unit/` misclassified because the old regex only
+ *     matched a `tests/` or `test/` literal directory segment.
+ *
+ * Patterns below are grouped by the signal they catch. Each rule is tight
+ * enough not to swallow unrelated paths like `testimonials/` or
+ * `components/Toaster.tsx`.
+ */
 export function isTestFile(path: string): boolean {
+  const basename = path.split("/").pop() ?? "";
+
+  // Pytest convention: any file named conftest.py anywhere is test infra.
+  if (basename === "conftest.py") return true;
+
   return (
-    /\.(test|spec)\.(t|j)sx?$/.test(path) || // foo.test.ts, foo.spec.tsx, foo.test.js
-    path.includes("__tests__") || // Jest convention
+    // JS / TS: foo.test.ts, foo.spec.tsx, foo.test.js
+    /\.(test|spec)\.(t|j)sx?$/.test(path) ||
+    // Jest convention: anything inside __tests__
+    path.includes("__tests__") ||
+    // Playwright / Cypress
     path.includes("/e2e/") ||
-    /_test\.go$/.test(path) || // Go: foo_test.go
-    /(^|\/)test_[^/]+\.py$/.test(path) || // Python: test_foo.py
-    /_test\.py$/.test(path) || // Python: foo_test.py
-    /_test\.rs$/.test(path) || // Rust: foo_test.rs
-    /(^|\/)test_[^/]+\.rs$/.test(path) || // Rust: test_foo.rs
-    /(^|\/)tests?\//.test(path) // tests/ or test/ directory
+    // Go: foo_test.go
+    /_test\.go$/.test(path) ||
+    // Python: test_foo.py, foo_test.py
+    /(^|\/)test_[^/]+\.py$/.test(path) ||
+    /_test\.py$/.test(path) ||
+    // Rust: foo_test.rs, test_foo.rs
+    /_test\.rs$/.test(path) ||
+    /(^|\/)test_[^/]+\.rs$/.test(path) ||
+    // Directory segments named exactly `test` / `tests` anywhere in the path.
+    /(^|\/)tests?(\/|$)/.test(path) ||
+    // Directory segments beginning with tests- or tests_ (tests-unit, tests_integration, test-utils, test_helpers).
+    /(^|\/)tests?[-_][^/]+\//.test(path) ||
+    // Directory segments ending with -test, _test, -tests, _tests (assets_test, unit-tests, integration_test).
+    /(^|\/)[^/]+[-_]tests?(\/|$)/.test(path) ||
+    // `spec/` or `specs/` segment (Ruby/RSpec-style layouts, also used by some JS projects).
+    /(^|\/)specs?(\/|$)/.test(path) ||
+    // `__test__/` (rare but used)
+    path.includes("__test__")
   );
 }
 

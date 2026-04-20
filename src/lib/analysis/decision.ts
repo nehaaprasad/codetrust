@@ -7,30 +7,43 @@ export function hasCriticalSecurityOverride(issues: AnalysisIssue[]): boolean {
   );
 }
 
+function hasAnyCritical(issues: AnalysisIssue[]): boolean {
+  return issues.some((i) => i.severity === "critical");
+}
+
+function hasAnyHigh(issues: AnalysisIssue[]): boolean {
+  return issues.some((i) => i.severity === "high");
+}
+
 /**
  * Decide the verdict for an analysis.
  *
- * The ordering below is deliberate:
+ * Order of precedence (each step can only downgrade, never upgrade):
  *
- *   1. **Critical-severity security findings always BLOCK**, regardless of
- *      the numeric score. A single eval() / SQLi / shell-exec is not
- *      something the weighted average can wash out.
- *   2. A raw score below 60 is **BLOCK**; below 85 is **RISKY**.
- *   3. At SAFE thresholds, we split further:
- *        - If we found zero issues **and** the AI reasoning pass did not
- *          run, we return **INCONCLUSIVE** instead of SAFE. A product
- *          called "Code Trust" must not claim a PR is safe when all it
- *          did was run a small regex engine that happened not to match.
- *        - Otherwise (issues were found and fixed, or AI reviewed and
- *          signed off) we return SAFE.
+ *   1. **Any `critical` issue → BLOCK.** A critical-severity finding in any
+ *      category (security, logic, etc.) is a hard stop, regardless of score.
+ *      A weighted average can wash out one critical finding arithmetically,
+ *      but it cannot wash it out of reality.
+ *   2. **Score < 60 → BLOCK.** Extreme low score.
+ *   3. **Any `high` issue → RISKY minimum.** This is the fix for the
+ *      "Score 93 · SAFE · but top finding is security (high)" contradiction
+ *      we were shipping. If the pipeline found a high-severity problem, the
+ *      verdict must reflect that, not the score average. Senior reviewers
+ *      lose trust the moment they see SAFE next to a high-sev bullet.
+ *   4. **Score < 85 → RISKY.** Mid-tier score floor.
+ *   5. **No issues + AI did not run → INCONCLUSIVE.** A product literally
+ *      called "Code Trust" must not declare SAFE when all it did was run a
+ *      small regex engine that happened not to match.
+ *   6. **Otherwise → SAFE.**
  */
 export function decisionFromScore(
   score: number,
   issues: AnalysisIssue[],
   opts?: { usedLlm?: boolean },
 ): Decision {
-  if (hasCriticalSecurityOverride(issues)) return "BLOCK";
+  if (hasAnyCritical(issues)) return "BLOCK";
   if (score < 60) return "BLOCK";
+  if (hasAnyHigh(issues)) return "RISKY";
   if (score < 85) return "RISKY";
   if (issues.length === 0 && !opts?.usedLlm) return "INCONCLUSIVE";
   return "SAFE";
