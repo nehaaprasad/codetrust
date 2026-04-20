@@ -1,6 +1,31 @@
 import { NextResponse } from "next/server";
 import { isDatabaseConfigured, getPrisma } from "@/lib/db";
 
+export async function GET() {
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json(
+      { error: "DATABASE_URL is not configured." },
+      { status: 503 },
+    );
+  }
+
+  const prisma = getPrisma();
+
+  const projects = await prisma.project.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+
+  return NextResponse.json(
+    projects.map((p) => ({
+      id: p.id,
+      name: p.name,
+      repoUrl: p.repoUrl,
+      analysisCount: 0,
+      createdAt: p.createdAt.toISOString(),
+    })),
+  );
+}
+
 export async function POST(req: Request) {
   if (!isDatabaseConfigured()) {
     return NextResponse.json(
