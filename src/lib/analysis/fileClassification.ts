@@ -30,22 +30,27 @@ export function isSourceFile(path: string): boolean {
 }
 
 /**
- * Is this path a code file — either source *or* test?
+ * Is this path a file written in a language the deterministic engine has
+ * real language-level rules for?
  *
- * This is the right predicate for generic maintainability checks like
- * "file too long" or "TODO/FIXME concentration", which should run against
- * anything a developer wrote in a programming language but must never run
- * against lockfiles (`bun.lock`, `pnpm-lock.yaml`, `package-lock.json`),
- * markdown documentation, JSON fixtures, or binary assets.
+ * Currently: JavaScript/TypeScript (incl. JSX/TSX, Vue, Svelte), Go,
+ * Python, Rust. Languages like PHP, Java, Ruby, C++, and Kotlin are NOT
+ * returned as true because we do not yet ship dedicated rules for them —
+ * running only the generic maintainability checks (file length, long
+ * lines, TODO density) on a PHP controller produces a review that looks
+ * like "this 740-line controller is long and has long lines", which is
+ * exactly the kind of empty output a senior engineer instantly distrusts.
+ *
+ * When we add rules for another language, extend this predicate (and
+ * update the AI-off hint on the result page accordingly).
  */
-export function isCodeFile(path: string): boolean {
+export function isDeeplySupportedLanguage(path: string): boolean {
   if (isDocOrConfigFile(path)) return false;
   return (
     /\.(tsx|jsx|ts|js|mjs|cjs|vue|svelte)$/.test(path) ||
     /\.go$/.test(path) ||
     /\.py$/.test(path) ||
-    /\.rs$/.test(path) ||
-    /\.(java|kt|scala|swift|c|cc|cpp|h|hpp|cs|rb|php)$/.test(path)
+    /\.rs$/.test(path)
   );
 }
 

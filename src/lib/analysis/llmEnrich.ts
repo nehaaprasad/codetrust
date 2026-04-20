@@ -33,19 +33,47 @@ const MAX_FILES = 8;
 const MAX_CHARS_PER_FILE = 4_000;
 const MAX_CONTEXT_CHARS = 24_000;
 
-/** Extra review pass using OpenAI. Returns null if skipped or on failure. */
+/**
+ * Extra review pass using OpenAI.
+ *
+ * Returns `null` when the pass did not run (skipped or failed). Every path
+ * that returns `null` logs a single line prefixed with `[ai-review]` to
+ * stderr / Vercel function logs, so operators can diagnose a silent
+ * `deterministic-v1` deployment by grepping one tag instead of guessing.
+ *
+ * Log taxonomy:
+ *   [ai-review] skipped: OPENAI_API_KEY not set      (common — fix: set it)
+ *   [ai-review] skipped: ENABLE_LLM=false            (someone turned it off)
+ *   [ai-review] skipped: empty context               (no text to send)
+ *   [ai-review] api error status=<code> message=…    (OpenAI returned err)
+ *   [ai-review] empty completion                     (OpenAI returned nothing)
+ *   [ai-review] invalid json in completion           (couldn't parse reply)
+ *   [ai-review] schema mismatch                      (shape didn't match)
+ *   [ai-review] unexpected error: …                  (anything else)
+ */
 export async function fetchLlmReview(
   files: CodeFile[],
 ): Promise<{ issues: AnalysisIssue[]; summaryNote?: string } | null> {
   const key = process.env.OPENAI_API_KEY?.trim();
-  if (!key || process.env.ENABLE_LLM === "false") return null;
+  if (!key) {
+    console.warn("[ai-review] skipped: OPENAI_API_KEY not set");
+    return null;
+  }
+  if (process.env.ENABLE_LLM === "false") {
+    console.warn("[ai-review] skipped: ENABLE_LLM=false");
+    return null;
+  }
 
   const context = buildContext(files);
-  if (!context.trim()) return null;
+  if (!context.trim()) {
+    console.warn("[ai-review] skipped: empty context (no readable files)");
+    return null;
+  }
+
+  const model = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
 
   try {
     const client = new OpenAI({ apiKey: key });
-    const model = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
 
     const completion = await client.chat.completions.create({
       model,
@@ -71,17 +99,28 @@ export async function fetchLlmReview(
     });
 
     const raw = completion.choices[0]?.message?.content;
-    if (!raw) return null;
+    if (!raw) {
+      console.warn(`[ai-review] empty completion model=${model}`);
+      return null;
+    }
 
     let parsed: unknown;
     try {
       parsed = JSON.parse(stripJsonFence(raw));
     } catch {
+      console.warn(
+        `[ai-review] invalid json in completion model=${model} preview=${raw.slice(0, 120)}`,
+      );
       return null;
     }
 
     const safe = responseSchema.safeParse(parsed);
-    if (!safe.success) return null;
+    if (!safe.success) {
+      console.warn(
+        `[ai-review] schema mismatch model=${model} issues=${safe.error.issues.length}`,
+      );
+      return null;
+    }
 
     const issues: AnalysisIssue[] = safe.data.issues.map((i) => ({
       category: i.category,
@@ -96,7 +135,21 @@ export async function fetchLlmReview(
       ...(safe.data.summaryNote ? { summaryNote: safe.data.summaryNote } : {}),
     };
   } catch (e) {
-    console.error("OpenAI review failed:", e);
+    // The OpenAI SDK attaches `status` (HTTP code) and `code` (string enum) on
+    // its error classes. Surfacing both turns "it doesn't work" into "you got
+    // a 401 invalid_api_key" without having to dig.
+    const err = e as {
+      status?: number;
+      code?: string;
+      message?: string;
+      name?: string;
+    };
+    const status = err.status ?? "?";
+    const code = err.code ?? err.name ?? "unknown";
+    const message = err.message ?? String(e);
+    console.error(
+      `[ai-review] api error model=${model} status=${status} code=${code} message=${message}`,
+    );
     return null;
   }
 }

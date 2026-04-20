@@ -61,7 +61,21 @@ function AiReviewBadge({ modelVersion }: { modelVersion: string }) {
   }
   return (
     <span
-      title="OpenAI reasoning did not run. This verdict reflects pattern rules only — set OPENAI_API_KEY in production to enable deeper review."
+      title={[
+        "OpenAI reasoning did not run for this analysis.",
+        "Verdict reflects pattern rules only.",
+        "",
+        "Common causes, in order of likelihood:",
+        "  1. OPENAI_API_KEY is set in Preview scope, not Production.",
+        "     Vercel → Settings → Environment Variables → check scope.",
+        "  2. The key is invalid, revoked, or the project has no quota.",
+        "     Check Vercel function logs for [ai-review] lines.",
+        "  3. ENABLE_LLM=false is set somewhere in the environment.",
+        "  4. OPENAI_MODEL is set to a model your key can't access.",
+        "",
+        "After fixing any of these, trigger Redeploy on the latest",
+        "production deployment for the new env to take effect.",
+      ].join("\n")}
       className="inline-flex items-center gap-1 rounded-full border border-amber-300/70 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300"
     >
       <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden />

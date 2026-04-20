@@ -1,4 +1,8 @@
-import { isCodeFile, isSourceFile, isTestFile } from "./fileClassification";
+import {
+  isDeeplySupportedLanguage,
+  isSourceFile,
+  isTestFile,
+} from "./fileClassification";
 import { firstLineForRegex, firstLineMatching } from "./lineFind";
 import type { AnalysisIssue, IssueCategory } from "./types";
 
@@ -566,14 +570,13 @@ export function runDeterministicChecks(files: CodeFile[]): AnalysisIssue[] {
       }
     }
 
-    // Maintainability — only run on files that are actually code. Lockfiles
-    // (`bun.lock`, `pnpm-lock.yaml`, `package-lock.json`), generated JSON
-    // fixtures, long markdown docs, and compiled assets will all trivially
-    // exceed 400 lines or 200 characters, but splitting them is not a
-    // meaningful review action. Surfacing those as "maintainability" issues
-    // produces exactly the kind of noise a senior engineer will dismiss the
-    // whole tool over.
-    if (isCodeFile(path)) {
+    // Maintainability — only run on languages the engine actually reviews
+    // deeply. On a language we have no rules for (PHP, Java, Ruby, C++…),
+    // "file too long" and "long line" become the *only* findings, which is
+    // misleading: it frames the absence of deeper review as a clean bill of
+    // health with minor nits. For those languages we'd rather emit nothing
+    // and let the INCONCLUSIVE verdict surface the real story.
+    if (isDeeplySupportedLanguage(path)) {
       const lines = content.split(/\r?\n/);
       if (lines.length > 400) {
         push(
@@ -621,11 +624,12 @@ export function runDeterministicChecks(files: CodeFile[]): AnalysisIssue[] {
     );
   }
 
-  // Logic: TODO/FIXME concentration across code files only. Markdown plans,
-  // changelogs, and task lists legitimately contain many TODO markers — they
-  // should not contribute to the score.
+  // Logic: TODO/FIXME concentration across deeply-supported languages only.
+  // Markdown plans/changelogs legitimately contain many TODO markers, and
+  // surfacing them for languages we don't otherwise review would again be
+  // misleading noise.
   for (const file of files) {
-    if (!isCodeFile(file.path)) continue;
+    if (!isDeeplySupportedLanguage(file.path)) continue;
     const todoCount = (file.content.match(/\b(TODO|FIXME)\b/g) ?? []).length;
     if (todoCount >= 5) {
       const line = firstLineMatching(file.content, (l) =>
