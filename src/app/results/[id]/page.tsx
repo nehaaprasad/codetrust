@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { IssueDetailList } from "@/components/issue-detail-list";
+import { IssuesDiff } from "@/components/issues-diff";
 import { dimensionRowsForDisplay } from "@/lib/analysis/dimensionScoresDisplay";
 import { cn } from "@/lib/utils";
 
@@ -503,7 +504,7 @@ export default function ResultPage() {
         ) : null}
 
         <div className="flex flex-col gap-3 border-t border-zinc-200 pt-10 dark:border-zinc-800 sm:flex-row sm:flex-wrap sm:items-center">
-          <RerunButton analysisId={id} />
+          <RerunButton analysisId={id} previousIssues={data.issues} />
           {data.prUrl ? (
             <Link href={`/results/${id}/diff`} className="sm:ml-0">
               <Button type="button" variant="outline" className="w-full sm:w-auto">
@@ -521,23 +522,53 @@ export default function ResultPage() {
   );
 }
 
-function RerunButton({ analysisId }: { analysisId: string }) {
+type Issue = {
+  category: string;
+  severity: string;
+  message: string;
+  filePath: string | null;
+  lineNumber: number | null;
+};
+
+function RerunButton({
+  analysisId,
+  previousIssues,
+}: {
+  analysisId: string;
+  previousIssues: Issue[];
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDiff, setShowDiff] = useState(false);
+  const [newIssues, setNewIssues] = useState<Issue[] | null>(null);
+  const [newAnalysisId, setNewAnalysisId] = useState<string | null>(null);
 
   async function rerun() {
     setError(null);
     setLoading(true);
+
     try {
       const res = await fetch(`/api/analysis/${analysisId}/rerun`, {
         method: "POST",
       });
-      const data = (await res.json()) as { error?: string };
+      const data = (await res.json()) as { error?: string; id?: string; issues?: Issue[] };
+
       if (!res.ok) {
         setError(data.error ?? "Rerun failed.");
         setLoading(false);
         return;
       }
+
+      // Get new issues from response for diff
+      if (data.issues && data.id) {
+        setNewIssues(data.issues);
+        setNewAnalysisId(data.id);
+        setShowDiff(true);
+        setLoading(false);
+        return;
+      }
+
+      // Fallback: just reload if no issues returned
       window.location.reload();
     } catch {
       setError("Network error.");
@@ -546,21 +577,43 @@ function RerunButton({ analysisId }: { analysisId: string }) {
   }
 
   return (
-    <div className="space-y-2">
-      <Button
-        type="button"
-        variant="outline"
-        onClick={rerun}
-        disabled={loading}
-        className="w-full border-zinc-300 bg-white font-medium shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:w-auto"
-      >
-        {loading ? "Re-running…" : "Re-run analysis"}
-      </Button>
-      {error ? (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
-          {error}
-        </p>
-      ) : null}
+    <div className="space-y-3">
+      {showDiff && newIssues && (
+        <>
+          <IssuesDiff previousIssues={previousIssues} currentIssues={newIssues} />
+          {newAnalysisId && (
+            <Button
+              type="button"
+              onClick={() => {
+                window.location.href = `/results/${newAnalysisId}`;
+              }}
+              className="w-full sm:w-auto"
+            >
+              View new analysis →
+            </Button>
+          )}
+        </>
+      )}
+
+      {!showDiff && (
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={rerun}
+            disabled={loading}
+            className="w-full border-zinc-300 bg-white font-medium shadow-sm dark:border-zinc-700 dark:bg-zinc-900 sm:w-auto"
+          >
+            {loading ? "Re-running…" : "Re-run analysis"}
+          </Button>
+
+          {error ? (
+            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
+              {error}
+            </p>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }
