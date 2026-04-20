@@ -105,28 +105,45 @@ export async function fetchLlmReview(
         {
           role: "system",
           content: [
-            "You are a senior code reviewer deciding whether a pull request is ready to ship.",
-            "Respond with JSON only — no prose outside the JSON object.",
+            "You are a senior security-minded code reviewer. Respond with JSON only — no prose outside the JSON object.",
             "",
-            "Rules for findings:",
-            "1. Every issue must be grounded in the code you were given. Cite filePath and a line number when the evidence is visible.",
-            "2. Do NOT speculate about code you cannot see (caller sites, downstream modules, unknown environments).",
-            "3. Do NOT use hedging words: may, might, could, possibly, potentially, susceptible, in certain scenarios. If you cannot state the problem definitively, omit it.",
-            "4. Do NOT flag stylistic preferences, code formatting, or generic 'consider adding tests / docs' suggestions.",
-            "5. Do NOT file issues on test fixtures or test-only files about missing error handling or missing tests — tests are allowed to let exceptions propagate.",
-            "6. Prefer high-signal findings: security vulnerabilities, data-loss bugs, logic errors, concurrency bugs, incorrect error handling, race conditions, input-validation holes, API contract breaks.",
-            "7. Severity rubric: critical = exploitable or data-loss; high = real bug reviewers would block on; medium = real issue but non-blocking; low = minor correctness nit. Do not inflate severities.",
-            "8. If the code looks solid after honest review, return an empty issues array. Padding with weak findings destroys trust.",
+            "HARD RULES (violations mean the finding is wrong and must be dropped):",
             "",
-            "Use exactly these categories: security, logic, performance, testing, accessibility, maintainability.",
-            "Use exactly these severities: low, medium, high, critical.",
+            "R1. Every finding must be grounded in the code shown to you. Cite filePath and lineNumber.",
+            "",
+            "R2. BANNED WORDS in every `message` AND in `summaryNote`: may, might, could, possibly, potential, potentially, susceptible, in certain scenarios, should be improved, should consider.",
+            "    If you cannot state the defect as a declarative fact ('X is Y' / 'X does Z'), OMIT the finding.",
+            "    Wrong: 'The call may be susceptible to injection'. Right: 'line 45 passes user-controlled `name` into shell=True subprocess'.",
+            "",
+            "R3. For any `security` finding, you must be able to name: (a) the untrusted input source, (b) the sink where it lands, (c) the exploit the attacker gains. If you cannot name all three from the code, it is NOT a security finding.",
+            "",
+            "R4. FALSE-POSITIVE PATTERNS — do NOT file these:",
+            "    - `subprocess.Popen([const, const, ...], shell=False)` where every argv entry is a string literal, `sys.executable`, `__file__`, or another module-level constant. String literals cannot be injected.",
+            "    - A database connection string / URL is NOT a SQL query. SQL injection requires query text built by concatenation/interpolation of untrusted input; a connection URL has no such surface.",
+            "    - Missing try/except around a test fixture. Test fixtures are allowed to raise — pytest surfaces the error.",
+            "    - 'Consider adding tests / docs / type hints' unless the PR actually breaks existing ones.",
+            "    - Logging calls, comments, formatting, or import order.",
+            "    - Calls whose inputs are all constants defined in the same file.",
+            "",
+            "R5. Do NOT file a finding that agrees with the code in the same sentence ('X is correct, but ...'). If the code is correct, stay silent.",
+            "",
+            "R6. Severity rubric — do NOT inflate:",
+            "    - critical: exploitable by an unauthenticated attacker, OR silent data loss/corruption.",
+            "    - high: concrete bug a reviewer would block on (auth bypass, wrong result returned to caller, visible race condition, unhandled exception on a hot path).",
+            "    - medium: real defect, non-blocking.",
+            "    - low: minor correctness nit.",
+            "",
+            "R7. If the change looks sound after honest review, return {\"issues\": []} and omit summaryNote. Zero findings is a trusted, correct answer; padding with weak findings is not.",
+            "",
+            "Categories allowed: security, logic, performance, testing, accessibility, maintainability.",
+            "Severities allowed: low, medium, high, critical.",
           ].join("\n"),
         },
         {
           role: "user",
           content:
             `Files to review (truncated):\n\n${context}\n\n` +
-            'Return JSON in this exact shape: {"issues":[{"category":"security|logic|performance|testing|accessibility|maintainability","severity":"low|medium|high|critical","message":"concrete problem, no hedging","filePath":"optional path","lineNumber":null or number}],"summaryNote":"optional one sentence, factual"}',
+            'Return JSON in this exact shape: {"issues":[{"category":"security|logic|performance|testing|accessibility|maintainability","severity":"low|medium|high|critical","message":"declarative fact with file+line, no banned words","filePath":"path","lineNumber":number}],"summaryNote":"optional single declarative sentence, no banned words, or omit"}',
         },
       ],
     });
@@ -155,7 +172,7 @@ export async function fetchLlmReview(
       return null;
     }
 
-    const issues: AnalysisIssue[] = safe.data.issues.map((i) => ({
+    const rawIssues: AnalysisIssue[] = safe.data.issues.map((i) => ({
       category: i.category,
       severity: i.severity,
       message: i.message,
@@ -163,9 +180,33 @@ export async function fetchLlmReview(
       lineNumber: i.lineNumber ?? undefined,
     }));
 
+    // Belt-and-braces hedging filter. The prompt tells the model not to use
+    // hedging words, but llama-3.3-70b and similar models ignore this ~20% of
+    // the time. A finding that hedges ("may be susceptible", "could lead to")
+    // is, by the prompt's own definition, one the model couldn't commit to —
+    // so it shouldn't reach the user. We drop it here rather than argue with
+    // the model. Same rule applies to summaryNote: if it hedges, we drop it
+    // entirely rather than ship "Multiple potential security issues" copy.
+    const issues = rawIssues.filter((i) => !containsHedging(i.message));
+    const droppedHedging = rawIssues.length - issues.length;
+    if (droppedHedging > 0) {
+      console.warn(
+        `[ai-review] filtered ${droppedHedging}/${rawIssues.length} hedging finding(s) model=${model}`,
+      );
+    }
+
+    const rawNote = safe.data.summaryNote?.trim();
+    const summaryNote =
+      rawNote && !containsHedging(rawNote) ? rawNote : undefined;
+    if (rawNote && !summaryNote) {
+      console.warn(
+        `[ai-review] dropped hedging summaryNote model=${model} preview=${rawNote.slice(0, 80)}`,
+      );
+    }
+
     return {
       issues,
-      ...(safe.data.summaryNote ? { summaryNote: safe.data.summaryNote } : {}),
+      ...(summaryNote ? { summaryNote } : {}),
       provider: resolveProviderName(baseURL),
     };
   } catch (e) {
@@ -238,6 +279,39 @@ function buildContext(files: CodeFile[]): string {
     n += 1;
   }
   return parts.join("\n\n");
+}
+
+/**
+ * Hedging vocabulary that drains trust from a code review.
+ *
+ * Patterns match either the exact word (case-insensitive) or a telltale
+ * hedging phrase. A message that contains any of these is, by definition,
+ * one the model wasn't willing to commit to — and therefore not one we want
+ * to put in front of a senior reviewer.
+ *
+ * Examples filtered:
+ *   "may lead to a race condition"     → dropped (`\bmay\b`)
+ *   "Potential SQL injection"          → dropped (`\bpotential\b`)
+ *   "could be susceptible to …"        → dropped (multiple hits)
+ *
+ * NOT filtered (declarative, keep):
+ *   "line 45 passes `name` to shell=True subprocess"
+ *   "fetchUser returns null when id is 0, callers don't handle it"
+ */
+const HEDGING_PATTERNS: RegExp[] = [
+  /\bmay\b/i,
+  /\bmight\b/i,
+  /\bcould\b/i,
+  /\bpossibly\b/i,
+  /\bpotential(ly)?\b/i,
+  /\bsusceptible\b/i,
+  /\bin certain scenarios\b/i,
+  /\bshould be improved\b/i,
+  /\bshould consider\b/i,
+];
+
+function containsHedging(s: string): boolean {
+  return HEDGING_PATTERNS.some((re) => re.test(s));
 }
 
 function stripJsonFence(s: string): string {
