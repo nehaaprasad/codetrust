@@ -9,6 +9,7 @@ import {
   weightedTrustScore,
 } from "./scoring";
 import { extractChangedLines, type ChangedFileRegion } from "./diff-parser";
+import { isSourceFile, isTestFile } from "./fileClassification";
 import { runPrChecks } from "./pr-checks";
 import { computePrScore } from "./pr-scorer";
 import { formatPrFeedback, type PrFeedback } from "./pr-formatter";
@@ -65,6 +66,46 @@ function filterToPrRelated(
   });
 }
 
+/**
+ * If the PR changed real source files but did not change any test file,
+ * append a single `testing`-category medium issue so the testing dimension
+ * can no longer score 100. This is surfaced as a real issue (not a hidden
+ * cap) so reviewers understand why the score is lower.
+ *
+ * Deduped against any `testing` issue we already emitted from the file-level
+ * "No test files detected" rule so we don't double-penalise.
+ */
+function augmentWithTestingFloor(
+  issues: AnalysisIssue[],
+  changedRegions: Record<string, ChangedFileRegion>,
+): AnalysisIssue[] {
+  const changedPaths = Object.keys(changedRegions);
+  if (changedPaths.length === 0) return issues;
+
+  const changedSource = changedPaths.filter(isSourceFile);
+  const changedTests = changedPaths.filter(isTestFile);
+  if (changedSource.length === 0 || changedTests.length > 0) return issues;
+
+  const alreadyHasTestingSignal = issues.some(
+    (i) => i.category === "testing" && i.severity !== "low",
+  );
+  if (alreadyHasTestingSignal) return issues;
+
+  return [
+    ...issues,
+    {
+      category: "testing",
+      severity: "medium",
+      message:
+        changedSource.length === 1
+          ? "PR modifies source but adds or updates no tests — add a test that exercises the new behaviour."
+          : `PR modifies ${changedSource.length} source files but adds or updates no tests — add tests for the new behaviour.`,
+      filePath: changedSource[0],
+      lineNumber: null,
+    },
+  ];
+}
+
 export async function analyzeFiles(
   files: CodeFile[],
   options?: { workspaceId?: string | null; prDiff?: string },
@@ -104,6 +145,15 @@ export async function analyzeFiles(
 
     // Filter main issues to PR-related only
     prFilteredIssues = filterToPrRelated(merged, changedRegions);
+
+    // Testing floor: a PR that modifies real source code without touching
+    // any tests can no longer trivially reach 100. We inject a single
+    // `testing` issue (medium severity) so the testing dimension drops by
+    // one bucket, visibly — the user sees *why* their score is capped
+    // rather than a silent penalty. If tests were updated, the signal is
+    // suppressed. If the PR is docs/config/infra-only, we also skip it so
+    // README tweaks aren't penalised.
+    prFilteredIssues = augmentWithTestingFloor(prFilteredIssues, changedRegions);
   }
 
   const dimensionScores = dimensionScoresFromIssues(prFilteredIssues);

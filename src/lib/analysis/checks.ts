@@ -1,3 +1,4 @@
+import { isSourceFile, isTestFile } from "./fileClassification";
 import { firstLineForRegex, firstLineMatching } from "./lineFind";
 import type { AnalysisIssue, IssueCategory } from "./types";
 
@@ -524,36 +525,17 @@ export function runDeterministicChecks(files: CodeFile[]): AnalysisIssue[] {
     }
   }
 
-  // Testing: project-level. Recognise conventions across JS/TS, Go, Python, Rust.
+  // Testing: project-level signal. We flag "no tests" when there is at least
+  // one source file but no conventional test file anywhere in the analysed
+  // set. Rust unit tests live inline under `#[cfg(test)]`, so those are
+  // detected from file contents rather than path alone.
   const paths = files.map((f) => f.path);
-  const hasPathTestFile = paths.some(
-    (p) =>
-      /\.(test|spec)\.(t|j)sx?$/.test(p) || // JS/TS: foo.test.ts, foo.spec.tsx
-      p.includes("__tests__") || // Jest convention
-      p.includes("/e2e/") ||
-      /_test\.go$/.test(p) || // Go: foo_test.go
-      /(^|\/)test_[^/]+\.py$/.test(p) || // Python: test_foo.py
-      /_test\.py$/.test(p) || // Python: foo_test.py
-      /(^|\/)tests?\//.test(p), // tests/ or test/ dir (py/go/js/rs)
-  );
-  // Rust unit tests live inline under `#[cfg(test)]`, so also honour content.
+  const hasPathTestFile = paths.some(isTestFile);
   const hasInlineRustTests = files.some(
     (f) => /\.rs$/.test(f.path) && /#\[cfg\s*\(\s*test\s*\)\s*\]/.test(f.content),
   );
   const hasTestFile = hasPathTestFile || hasInlineRustTests;
-  const hasSource = paths.some(
-    (p) =>
-      /\.(tsx|jsx|vue)$/.test(p) ||
-      (/\.go$/.test(p) && !/_test\.go$/.test(p)) ||
-      (/\.py$/.test(p) &&
-        !/(^|\/)test_[^/]+\.py$/.test(p) &&
-        !/_test\.py$/.test(p) &&
-        !/(^|\/)tests?\//.test(p)) ||
-      (/\.rs$/.test(p) &&
-        !/(^|\/)tests\//.test(p) &&
-        !/_test\.rs$/.test(p) &&
-        !/(^|\/)test_[^/]+\.rs$/.test(p)),
-  );
+  const hasSource = paths.some(isSourceFile);
   if (hasSource && !hasTestFile && files.length >= 1) {
     push(
       issues,
