@@ -26,47 +26,42 @@ export type AnalysisResult = {
 };
 
 /**
- * Filter issues to only those related to PR changes.
- * Removes: file-level, project-level, global maintainability suggestions.
+ * Filter issues down to what is relevant for scoring a pull request.
+ *
+ * Historically this function required every issue to have a line number *and*
+ * be within ±`contextLines` of a changed line. That was too strict in two
+ * ways, both of which allowed low-signal "100 / SAFE" verdicts on real PRs:
+ *
+ *   1. Project-level findings (e.g. "no test files detected", long file, high
+ *      TODO count) carry no line number and were silently dropped.
+ *   2. File-level findings that happened to sit far from the diff (e.g. an
+ *      empty `if err != nil {}` 200 lines away from the edited region) were
+ *      dropped even though the reviewer is touching that same file.
+ *
+ * The new contract:
+ *
+ *   - Issues with **no file path** — treat as project-level and always keep.
+ *   - Issues in a file that is **part of the PR** — always keep, even if the
+ *     line is outside the diff window. The reviewer is responsible for that
+ *     file; surfacing existing problems is the point.
+ *   - Issues in files **not** part of the PR — drop (otherwise unrelated
+ *     noise from sibling files would dominate the verdict).
+ *
+ * Rationale: the trust score must reflect real risk in the code under
+ * review, not only the delta. If an engineer is editing a file that already
+ * swallows errors, the score should notice.
  */
 function filterToPrRelated(
   issues: AnalysisIssue[],
   changedRegions: Record<string, ChangedFileRegion>,
-  contextLines = 5,
 ): AnalysisIssue[] {
   if (Object.keys(changedRegions).length === 0) {
     return issues;
   }
 
   return issues.filter((issue) => {
-    // Must have a file path and line number
-    if (!issue.filePath || !issue.lineNumber) {
-      return false;
-    }
-
-    const region = changedRegions[issue.filePath];
-    if (!region) {
-      return false;
-    }
-
-    // Check if line is within changed ranges or nearby context
-    for (const range of region.addedRanges) {
-      const expandedStart = Math.max(1, range.start - contextLines);
-      const expandedEnd = range.end + contextLines;
-      if (issue.lineNumber >= expandedStart && issue.lineNumber <= expandedEnd) {
-        return true;
-      }
-    }
-
-    for (const range of region.deletedRanges) {
-      const expandedStart = Math.max(1, range.start - contextLines);
-      const expandedEnd = range.end + contextLines;
-      if (issue.lineNumber >= expandedStart && issue.lineNumber <= expandedEnd) {
-        return true;
-      }
-    }
-
-    return false;
+    if (!issue.filePath) return true;
+    return Object.prototype.hasOwnProperty.call(changedRegions, issue.filePath);
   });
 }
 
