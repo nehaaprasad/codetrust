@@ -1,5 +1,5 @@
 import type { CodeFile } from "./checks";
-import type { AnalysisIssue, IssueCategory, Severity } from "./types";
+import type { AnalysisIssue } from "./types";
 import type { ChangedFileRegion } from "./diff-parser";
 
 /**
@@ -22,7 +22,7 @@ export function runPrChecks(
 
     // Security: Critical and high-severity only
     for (const added of region.addedLines) {
-      checkAddedLineSecurity(issues, added, file.path, lines);
+      checkAddedLineSecurity(issues, added, file.path);
     }
 
     // Logic: Error handling gaps only (high value)
@@ -38,7 +38,6 @@ function checkAddedLineSecurity(
   issues: AnalysisIssue[],
   line: { lineNumber: number; content: string },
   filePath: string,
-  _lines: string[],
 ) {
   const content = line.content;
   const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
@@ -125,6 +124,20 @@ function checkAddedLineSecurity(
         category: "security",
         severity: "high",
         message: "verify=False disables TLS certificate verification",
+        filePath,
+        lineNumber: line.lineNumber,
+      });
+    }
+    // High: SQL injection via f-string / concat / %-formatting in .execute().
+    if (
+      /\.execute\s*\(\s*f["'][^"']*\{[^}]+\}/.test(content) ||
+      /\.execute\s*\(\s*["'][^"']*["']\s*\+/.test(content) ||
+      /\.execute\s*\(\s*["'][^"']*["']\s*%/.test(content)
+    ) {
+      issues.push({
+        category: "security",
+        severity: "high",
+        message: "SQL built via f-string/concat/% into .execute() risks injection; use parameterised queries",
         filePath,
         lineNumber: line.lineNumber,
       });

@@ -212,6 +212,25 @@ export function runDeterministicChecks(files: CodeFile[]): AnalysisIssue[] {
           goEmptyErrLine,
         );
       }
+      // Medium: `context.Background()` or `context.TODO()` inside a function
+      // that already has a `ctx context.Context` parameter. This is a common
+      // footgun — developers reach for `context.Background()` when the caller
+      // passed one, which silently detaches the call from caller cancellation.
+      // We only flag when both are present in the file; that's a strong
+      // indicator the wrong context is being used somewhere in a handler.
+      const goHasCtxParam = /\bctx\s+context\.Context\b/.test(content);
+      const goBgCtx = /\bcontext\.(?:Background|TODO)\s*\(\s*\)/;
+      if (goHasCtxParam && goBgCtx.test(content)) {
+        const line = firstLineForRegex(content, goBgCtx);
+        push(
+          issues,
+          "logic",
+          "medium",
+          "context.Background()/TODO() called in a file that already receives a ctx — pass the caller's ctx to honour cancellation/timeouts.",
+          path,
+          line,
+        );
+      }
       // Low: fmt.Errorf with %s of err loses the wrapped chain; prefer %w.
       const goErrPct = /fmt\.Errorf\s*\([^)]*%s[^)]*,\s*[^)]*\berr\b/;
       if (goErrPct.test(content)) {
@@ -328,6 +347,33 @@ export function runDeterministicChecks(files: CodeFile[]): AnalysisIssue[] {
           line,
         );
       }
+      // High: SQL injection via string formatting into .execute().
+      // Matches the three common footguns:
+      //   cursor.execute(f"SELECT * FROM users WHERE id = {uid}")
+      //   cursor.execute("SELECT * FROM users WHERE id = " + uid)
+      //   cursor.execute("SELECT * FROM users WHERE id = %s" % uid)
+      // Parameterised queries (`.execute(sql, (uid,))`) are NOT matched.
+      const pySqlFString = /\.execute\s*\(\s*f["'][^"']*\{[^}]+\}/;
+      const pySqlConcat = /\.execute\s*\(\s*["'][^"']*["']\s*\+/;
+      const pySqlPercent = /\.execute\s*\(\s*["'][^"']*["']\s*%/;
+      if (
+        pySqlFString.test(content) ||
+        pySqlConcat.test(content) ||
+        pySqlPercent.test(content)
+      ) {
+        const line =
+          firstLineForRegex(content, pySqlFString) ??
+          firstLineForRegex(content, pySqlConcat) ??
+          firstLineForRegex(content, pySqlPercent);
+        push(
+          issues,
+          "security",
+          "high",
+          "SQL built via f-string/concatenation/%-formatting into .execute() risks injection; use parameterised queries.",
+          path,
+          line,
+        );
+      }
       // Medium: bare `except:` silently catches SystemExit / KeyboardInterrupt.
       const pyBareExcept = /^\s*except\s*:\s*(?:#.*)?$/;
       if (firstLineForRegex(content, pyBareExcept) !== null) {
@@ -360,6 +406,26 @@ export function runDeterministicChecks(files: CodeFile[]): AnalysisIssue[] {
           "security",
           "medium",
           "`unsafe` block: verify memory-safety invariants and document why it is needed.",
+          path,
+          line,
+        );
+      }
+
+      // Medium: narrowing cast from `.len()` (which returns `usize`) to a
+      // 32-bit-or-smaller integer. `usize` is 64 bits on most targets, so
+      // casting a collection length to `u32`/`u16`/`u8`/`i32` silently
+      // truncates past 2^31/2^15/2^7/2^31. This is the single most common
+      // place Rust integer-overflow bugs enter production code and a
+      // deliberate narrow pattern to keep false positives near zero.
+      const rsLenNarrow = /\.len\s*\(\s*\)\s+as\s+(u8|u16|u32|i8|i16|i32)\b/;
+      const rsLenNarrowMatch = content.match(rsLenNarrow);
+      if (rsLenNarrowMatch) {
+        const line = firstLineForRegex(content, rsLenNarrow);
+        push(
+          issues,
+          "logic",
+          "medium",
+          `Cast \`.len() as ${rsLenNarrowMatch[1]}\` silently truncates on large collections; use \`try_from\`/\`try_into\` or bound the length first.`,
           path,
           line,
         );
