@@ -119,6 +119,7 @@ Copy `.env.example` to `.env` and set at least:
 | `AUTH_GITHUB_ID` | For sign-in | GitHub OAuth App client id |
 | `AUTH_GITHUB_SECRET` | For sign-in | GitHub OAuth App **client** secret from Developer settings |
 | `GITHUB_WEBHOOK_SECRET` | For **webhooks** | Shared secret; required for `POST /api/github/webhook` |
+| `ANALYZE_MAX_TOTAL_BYTES` | No | Combined-source cap fed into the analyzer (default `1500000`, i.e. 1.5 MB; clamped to 100 KB … 50 MB). Raise for very large PRs. |
 
 **2. Database**
 
@@ -175,7 +176,7 @@ Run the worker in a second terminal while using the app; otherwise queued jobs s
 
 | Method | Path | Notes |
 |--------|------|--------|
-| `POST` | `/api/analyze` | Body: `{ "code" }` and/or `{ "prUrl" }` and/or `{ "files": [...] }`. Optional auth: `Authorization: Bearer <api_key>` or `X-API-Key` (create keys on the **Dashboard**). Browser sessions attach your GitHub user id when signed in. Sync: **200** with full result. Async (Redis): **202** + `{ "jobId" }`. |
+| `POST` | `/api/analyze` | Body: `{ "code" }` and/or `{ "prUrl" }` and/or `{ "files": [...] }`. Optional auth: `Authorization: Bearer <api_key>` or `X-API-Key` (create keys on the **Dashboard**). Browser sessions attach your GitHub user id when signed in. Sync: **200** with full result. Async (Redis): **202** + `{ "jobId" }`. Returns **413** `{ error, totalBytes, limitBytes }` when combined input exceeds `ANALYZE_MAX_TOTAL_BYTES`. For PR URLs the analyzer uses each file's **diff patch** (added + context lines) rather than fetching head-ref blobs in full, so request size scales with the change, not the repo. |
 | `GET` | `/api/jobs/:jobId` | Job state: `waiting` / `active` / `completed` / `failed`; `result` when completed |
 | `GET` | `/api/analysis/:id` | Stored row; includes `prCommentUrl` when a comment was posted; needs DB |
 | `POST` | `/api/analysis/:id/rerun` | Re-runs from stored input; needs DB |
