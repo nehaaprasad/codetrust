@@ -36,6 +36,38 @@ function verdictAccentBorder(d: string): string {
   return "border-l-zinc-300 dark:border-l-zinc-600";
 }
 
+/**
+ * Surfaces whether the AI reasoning pass actually ran for this analysis.
+ * The `modelVersion` string is authoritative: `deterministic+openai-v1` means
+ * OpenAI returned a usable response; `deterministic-v1` means we ran pattern
+ * rules only (either no key configured, the call failed, or it was disabled).
+ * Calling this out explicitly prevents users from mistaking "100 / SAFE from
+ * regex only" for "the AI reviewed this and said it is safe".
+ */
+function AiReviewBadge({ modelVersion }: { modelVersion: string }) {
+  const aiOn = modelVersion.includes("openai");
+  if (aiOn) {
+    return (
+      <span
+        title="OpenAI reasoning pass contributed to this verdict."
+        className="inline-flex items-center gap-1 rounded-full border border-emerald-200/70 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+        AI reasoning · on
+      </span>
+    );
+  }
+  return (
+    <span
+      title="OpenAI reasoning did not run. This verdict reflects pattern rules only — set OPENAI_API_KEY in production to enable deeper review."
+      className="inline-flex items-center gap-1 rounded-full border border-amber-300/70 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300"
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden />
+      AI reasoning · off — rules only
+    </span>
+  );
+}
+
 type AnalysisPayload = {
   id: string;
   projectId: string | null;
@@ -284,6 +316,8 @@ export default function ResultPage() {
                       <span className="text-zinc-400">model</span>{" "}
                       <span className="text-zinc-700 dark:text-zinc-300">{data.modelVersion}</span>
                     </span>
+                    <span className="hidden text-zinc-300 sm:inline dark:text-zinc-600">·</span>
+                    <AiReviewBadge modelVersion={data.modelVersion} />
                     {data.prCommentUrl ? (
                       <>
                         <span className="hidden text-zinc-300 sm:inline dark:text-zinc-600">·</span>
