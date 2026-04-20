@@ -66,6 +66,7 @@ export function runDeterministicChecks(files: CodeFile[]): AnalysisIssue[] {
       ["ts", "tsx", "js", "jsx", "mjs", "cjs"].includes(ext) || path.endsWith(".vue");
     const isGo = ext === "go";
     const isPy = ext === "py";
+    const isRs = ext === "rs";
 
     // Security
     if (/eval\s*\(/.test(content)) {
@@ -341,6 +342,83 @@ export function runDeterministicChecks(files: CodeFile[]): AnalysisIssue[] {
       }
     }
 
+    // Rust — memory-safety, panic, and shell-injection heuristics.
+    if (isRs) {
+      const isRustTestFile =
+        /(^|\/)tests\//.test(path) ||
+        /_test\.rs$/.test(path) ||
+        /(^|\/)test_[^/]+\.rs$/.test(path);
+
+      // Medium: `unsafe { … }` blocks and `unsafe fn` definitions.
+      // Not inherently wrong, but always deserves a reviewer's eye.
+      const rsUnsafe = /\bunsafe\s*(?:\{|fn\b)/;
+      if (rsUnsafe.test(content)) {
+        const line = firstLineForRegex(content, rsUnsafe);
+        push(
+          issues,
+          "security",
+          "medium",
+          "`unsafe` block: verify memory-safety invariants and document why it is needed.",
+          path,
+          line,
+        );
+      }
+
+      // High: std::mem::transmute bypasses the type system entirely.
+      const rsTransmute = /\b(?:std::)?mem::transmute\s*(?:::<|\()/;
+      if (rsTransmute.test(content)) {
+        const line = firstLineForRegex(content, rsTransmute);
+        push(
+          issues,
+          "security",
+          "high",
+          "mem::transmute bypasses type safety; prefer a safe cast or `bytemuck`.",
+          path,
+          line,
+        );
+      }
+
+      // Critical: `Command::new("sh"|"bash"|…)` — shell-level exec.
+      const rsShellCmd =
+        /\bCommand::new\s*\(\s*"(?:sh|bash|\/bin\/sh|\/bin\/bash)"\s*\)/;
+      const rsFmtCmd = /\bCommand::new\s*\([^)]*format!\s*\(/;
+      if (rsShellCmd.test(content) || rsFmtCmd.test(content)) {
+        const line =
+          firstLineForRegex(content, rsShellCmd) ??
+          firstLineForRegex(content, rsFmtCmd);
+        push(
+          issues,
+          "security",
+          "critical",
+          "Command::new via shell or format! risks command injection; pass argv to .arg().",
+          path,
+          line,
+        );
+      }
+
+      // Medium: `.unwrap()` in non-test code panics on error. To keep the
+      // signal honest, skip dedicated test files, and — for prod files that
+      // happen to carry an inline `#[cfg(test)]` module — only count unwraps
+      // that appear before that module starts.
+      if (!isRustTestFile) {
+        const testModIdx = content.search(/#\[cfg\s*\(\s*test\s*\)\s*\]/);
+        const prodSection = testModIdx === -1 ? content : content.slice(0, testModIdx);
+        const rsUnwrap = /\.unwrap\s*\(\s*\)/g;
+        const matches = prodSection.match(rsUnwrap) ?? [];
+        if (matches.length > 0) {
+          const line = firstLineForRegex(prodSection, /\.unwrap\s*\(\s*\)/);
+          push(
+            issues,
+            "logic",
+            "medium",
+            `${matches.length === 1 ? "`.unwrap()` panics on error" : `\`.unwrap()\` used ${matches.length}× in non-test code`}; handle the Result/Option or use \`?\`.`,
+            path,
+            line,
+          );
+        }
+      }
+    }
+
     // Logic
     if (/catch\s*\(\s*\)\s*\{/.test(content) || /catch\s*\{\s*\}/.test(content)) {
       const line =
@@ -446,9 +524,9 @@ export function runDeterministicChecks(files: CodeFile[]): AnalysisIssue[] {
     }
   }
 
-  // Testing: project-level. Recognise conventions across JS/TS, Go, Python.
+  // Testing: project-level. Recognise conventions across JS/TS, Go, Python, Rust.
   const paths = files.map((f) => f.path);
-  const hasTestFile = paths.some(
+  const hasPathTestFile = paths.some(
     (p) =>
       /\.(test|spec)\.(t|j)sx?$/.test(p) || // JS/TS: foo.test.ts, foo.spec.tsx
       p.includes("__tests__") || // Jest convention
@@ -456,8 +534,13 @@ export function runDeterministicChecks(files: CodeFile[]): AnalysisIssue[] {
       /_test\.go$/.test(p) || // Go: foo_test.go
       /(^|\/)test_[^/]+\.py$/.test(p) || // Python: test_foo.py
       /_test\.py$/.test(p) || // Python: foo_test.py
-      /(^|\/)tests?\//.test(p), // tests/ or test/ dir (py/go/js)
+      /(^|\/)tests?\//.test(p), // tests/ or test/ dir (py/go/js/rs)
   );
+  // Rust unit tests live inline under `#[cfg(test)]`, so also honour content.
+  const hasInlineRustTests = files.some(
+    (f) => /\.rs$/.test(f.path) && /#\[cfg\s*\(\s*test\s*\)\s*\]/.test(f.content),
+  );
+  const hasTestFile = hasPathTestFile || hasInlineRustTests;
   const hasSource = paths.some(
     (p) =>
       /\.(tsx|jsx|vue)$/.test(p) ||
@@ -465,7 +548,11 @@ export function runDeterministicChecks(files: CodeFile[]): AnalysisIssue[] {
       (/\.py$/.test(p) &&
         !/(^|\/)test_[^/]+\.py$/.test(p) &&
         !/_test\.py$/.test(p) &&
-        !/(^|\/)tests?\//.test(p)),
+        !/(^|\/)tests?\//.test(p)) ||
+      (/\.rs$/.test(p) &&
+        !/(^|\/)tests\//.test(p) &&
+        !/_test\.rs$/.test(p) &&
+        !/(^|\/)test_[^/]+\.rs$/.test(p)),
   );
   if (hasSource && !hasTestFile && files.length >= 1) {
     push(

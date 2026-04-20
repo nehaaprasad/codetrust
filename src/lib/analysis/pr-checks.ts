@@ -44,6 +44,7 @@ function checkAddedLineSecurity(
   const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
   const isGo = ext === "go";
   const isPy = ext === "py";
+  const isRs = ext === "rs";
 
   // Critical: eval() - JS eval or Python eval (same risk class).
   if (/\beval\s*\(/.test(content)) {
@@ -191,6 +192,40 @@ function checkAddedLineSecurity(
       filePath,
       lineNumber: line.lineNumber,
     });
+  }
+
+  // Rust: transmute, shell-exec, unsafe on changed lines.
+  if (isRs) {
+    if (/\b(?:std::)?mem::transmute\s*(?:::<|\()/.test(content)) {
+      issues.push({
+        category: "security",
+        severity: "high",
+        message: "mem::transmute bypasses type safety; prefer a safe cast",
+        filePath,
+        lineNumber: line.lineNumber,
+      });
+    }
+    if (
+      /\bCommand::new\s*\(\s*"(?:sh|bash|\/bin\/sh|\/bin\/bash)"\s*\)/.test(content) ||
+      /\bCommand::new\s*\([^)]*format!\s*\(/.test(content)
+    ) {
+      issues.push({
+        category: "security",
+        severity: "critical",
+        message: "Command::new via shell or format! risks command injection",
+        filePath,
+        lineNumber: line.lineNumber,
+      });
+    }
+    if (/\bunsafe\s*(?:\{|fn\b)/.test(content)) {
+      issues.push({
+        category: "security",
+        severity: "medium",
+        message: "`unsafe` introduced — verify memory-safety invariants",
+        filePath,
+        lineNumber: line.lineNumber,
+      });
+    }
   }
 }
 
