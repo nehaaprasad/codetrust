@@ -118,10 +118,12 @@ export async function analyzeFiles(
   let usedLlm = false;
 
   const llm = await fetchLlmReview(files);
+  let llmProvider = "openai";
   if (llm) {
     merged = mergeIssues(merged, llm.issues);
     if (llm.summaryNote?.trim()) summaryNote = llm.summaryNote;
     usedLlm = true;
+    llmProvider = llm.provider;
   }
 
   // PR-aware analysis: run targeted checks on changed lines
@@ -179,7 +181,9 @@ export async function analyzeFiles(
     });
   }
 
-  const modelVersion = usedLlm ? "deterministic+openai-v1" : "deterministic-v1";
+  const modelVersion = usedLlm
+    ? `deterministic+${llmProvider}-v1`
+    : "deterministic-v1";
 
   if (customRules.length > 0) {
     sources.push({

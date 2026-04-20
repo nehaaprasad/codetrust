@@ -40,41 +40,53 @@ function verdictAccentBorder(d: string): string {
 
 /**
  * Surfaces whether the AI reasoning pass actually ran for this analysis.
- * The `modelVersion` string is authoritative: `deterministic+openai-v1` means
- * OpenAI returned a usable response; `deterministic-v1` means we ran pattern
- * rules only (either no key configured, the call failed, or it was disabled).
- * Calling this out explicitly prevents users from mistaking "100 / SAFE from
- * regex only" for "the AI reviewed this and said it is safe".
+ *
+ * The `modelVersion` string is authoritative and encodes the provider that
+ * was actually used:
+ *   - `deterministic+openai-v1`      — OpenAI
+ *   - `deterministic+groq-v1`        — Groq (free tier)
+ *   - `deterministic+openrouter-v1`  — OpenRouter
+ *   - `deterministic+together-v1`    — Together AI
+ *   - `deterministic+custom-v1`      — any other OpenAI-compatible base URL
+ *   - `deterministic-v1`             — rules only (no AI)
+ *
+ * Any string starting with `deterministic+` means a provider returned a
+ * usable response. The surface-level label stays "AI reasoning · on"
+ * regardless of which provider — the distinction matters in logs, not in
+ * the badge.
  */
 function AiReviewBadge({ modelVersion }: { modelVersion: string }) {
-  const aiOn = modelVersion.includes("openai");
+  const aiOn = modelVersion.startsWith("deterministic+");
   if (aiOn) {
+    const provider = modelVersion
+      .replace(/^deterministic\+/, "")
+      .replace(/-v\d+$/, "");
     return (
       <span
-        title="OpenAI reasoning pass contributed to this verdict."
+        title={`AI reasoning pass via ${provider} contributed to this verdict.`}
         className="inline-flex items-center gap-1 rounded-full border border-emerald-200/70 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
       >
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
-        AI reasoning · on
+        AI reasoning · on · {provider}
       </span>
     );
   }
   return (
     <span
       title={[
-        "OpenAI reasoning did not run for this analysis.",
+        "AI reasoning did not run for this analysis.",
         "Verdict reflects pattern rules only.",
         "",
-        "Common causes, in order of likelihood:",
-        "  1. OPENAI_API_KEY is set in Preview scope, not Production.",
-        "     Vercel → Settings → Environment Variables → check scope.",
-        "  2. The key is invalid, revoked, or the project has no quota.",
-        "     Check Vercel function logs for [ai-review] lines.",
-        "  3. ENABLE_LLM=false is set somewhere in the environment.",
-        "  4. OPENAI_MODEL is set to a model your key can't access.",
+        "Free option (no credit card): use Groq instead of OpenAI.",
+        "  1. Create a free key at https://console.groq.com/keys",
+        "  2. In Vercel → Settings → Environment Variables add:",
+        "       OPENAI_API_KEY  = <your groq key>",
+        "       OPENAI_BASE_URL = https://api.groq.com/openai/v1",
+        "  3. Redeploy the latest production deployment.",
         "",
-        "After fixing any of these, trigger Redeploy on the latest",
-        "production deployment for the new env to take effect.",
+        "If you're already using a provider, check Vercel function",
+        "logs for a [ai-review] line — it names the exact failure",
+        "(invalid key, missing quota, unavailable model, etc.).",
       ].join("\n")}
       className="inline-flex items-center gap-1 rounded-full border border-amber-300/70 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300"
     >

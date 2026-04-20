@@ -34,7 +34,26 @@ const MAX_CHARS_PER_FILE = 4_000;
 const MAX_CONTEXT_CHARS = 24_000;
 
 /**
- * Extra review pass using OpenAI.
+ * Extra review pass using any OpenAI-compatible LLM provider.
+ *
+ * Despite the historical `OPENAI_*` env var names, this function is not
+ * tied to OpenAI the vendor: the OpenAI Node SDK accepts an arbitrary
+ * `baseURL`, so any provider whose HTTP surface mirrors OpenAI's
+ * `/chat/completions` endpoint works with zero code changes. In practice
+ * that means:
+ *
+ *   - **OpenAI**        — default, leave `OPENAI_BASE_URL` unset
+ *   - **Groq**          — free tier, fast — see `.env.example` for setup
+ *   - **OpenRouter**    — routes to many models, some free
+ *   - **Together AI**   — free tier available
+ *   - **Fireworks AI**  — OpenAI-compatible `chat/completions`
+ *   - **Azure OpenAI**  — set base URL to your Azure deployment
+ *
+ * Provider defaults for model:
+ *   - If `OPENAI_MODEL` is set, use it verbatim.
+ *   - Else if `OPENAI_BASE_URL` points at groq.com, default to
+ *     `llama-3.3-70b-versatile` (fast, free, supports JSON mode).
+ *   - Else default to `gpt-4o-mini` (OpenAI).
  *
  * Returns `null` when the pass did not run (skipped or failed). Every path
  * that returns `null` logs a single line prefixed with `[ai-review]` to
@@ -42,18 +61,21 @@ const MAX_CONTEXT_CHARS = 24_000;
  * `deterministic-v1` deployment by grepping one tag instead of guessing.
  *
  * Log taxonomy:
- *   [ai-review] skipped: OPENAI_API_KEY not set      (common — fix: set it)
+ *   [ai-review] skipped: OPENAI_API_KEY not set      (fix: set it)
  *   [ai-review] skipped: ENABLE_LLM=false            (someone turned it off)
  *   [ai-review] skipped: empty context               (no text to send)
- *   [ai-review] api error status=<code> message=…    (OpenAI returned err)
- *   [ai-review] empty completion                     (OpenAI returned nothing)
+ *   [ai-review] api error status=<code> message=…    (provider returned err)
+ *   [ai-review] empty completion                     (provider returned nothing)
  *   [ai-review] invalid json in completion           (couldn't parse reply)
  *   [ai-review] schema mismatch                      (shape didn't match)
- *   [ai-review] unexpected error: …                  (anything else)
  */
 export async function fetchLlmReview(
   files: CodeFile[],
-): Promise<{ issues: AnalysisIssue[]; summaryNote?: string } | null> {
+): Promise<{
+  issues: AnalysisIssue[];
+  summaryNote?: string;
+  provider: string;
+} | null> {
   const key = process.env.OPENAI_API_KEY?.trim();
   if (!key) {
     console.warn("[ai-review] skipped: OPENAI_API_KEY not set");
@@ -70,10 +92,11 @@ export async function fetchLlmReview(
     return null;
   }
 
-  const model = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
+  const baseURL = process.env.OPENAI_BASE_URL?.trim() || undefined;
+  const model = resolveDefaultModel(baseURL);
 
   try {
-    const client = new OpenAI({ apiKey: key });
+    const client = new OpenAI({ apiKey: key, ...(baseURL ? { baseURL } : {}) });
 
     const completion = await client.chat.completions.create({
       model,
@@ -133,6 +156,7 @@ export async function fetchLlmReview(
     return {
       issues,
       ...(safe.data.summaryNote ? { summaryNote: safe.data.summaryNote } : {}),
+      provider: resolveProviderName(baseURL),
     };
   } catch (e) {
     // The OpenAI SDK attaches `status` (HTTP code) and `code` (string enum) on
@@ -147,11 +171,44 @@ export async function fetchLlmReview(
     const status = err.status ?? "?";
     const code = err.code ?? err.name ?? "unknown";
     const message = err.message ?? String(e);
+    const providerHint = baseURL ? ` baseURL=${baseURL}` : "";
     console.error(
-      `[ai-review] api error model=${model} status=${status} code=${code} message=${message}`,
+      `[ai-review] api error model=${model}${providerHint} status=${status} code=${code} message=${message}`,
     );
     return null;
   }
+}
+
+/**
+ * Pick a sensible default model for the configured provider.
+ *
+ * Respects an explicit `OPENAI_MODEL` env var if the operator set one;
+ * otherwise routes based on the base URL so a "just set the key and go"
+ * setup works for each supported provider.
+ */
+function resolveDefaultModel(baseURL: string | undefined): string {
+  const override = process.env.OPENAI_MODEL?.trim();
+  if (override) return override;
+  if (baseURL && /groq\.com/i.test(baseURL)) return "llama-3.3-70b-versatile";
+  if (baseURL && /openrouter\.ai/i.test(baseURL)) return "meta-llama/llama-3.3-70b-instruct:free";
+  if (baseURL && /together\.(ai|xyz)/i.test(baseURL))
+    return "meta-llama/Llama-3.3-70B-Instruct-Turbo";
+  return "gpt-4o-mini";
+}
+
+/**
+ * Short provider slug derived from the base URL, used to build the
+ * `modelVersion` string on the result (e.g. `deterministic+groq-v1`).
+ * Defaults to `openai` when no base URL is set.
+ */
+function resolveProviderName(baseURL: string | undefined): string {
+  if (!baseURL) return "openai";
+  if (/groq\.com/i.test(baseURL)) return "groq";
+  if (/openrouter\.ai/i.test(baseURL)) return "openrouter";
+  if (/together\.(ai|xyz)/i.test(baseURL)) return "together";
+  if (/fireworks\.ai/i.test(baseURL)) return "fireworks";
+  if (/azure\.com/i.test(baseURL)) return "azure";
+  return "custom";
 }
 
 function buildContext(files: CodeFile[]): string {
