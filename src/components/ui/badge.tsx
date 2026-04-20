@@ -15,6 +15,8 @@ const badgeVariants = cva(
           "border-amber-200/80 bg-amber-100 text-amber-950 dark:border-amber-500/25 dark:bg-amber-500/12 dark:text-amber-100 dark:shadow-[0_0_20px_-8px_rgba(245,158,11,0.35)]",
         block:
           "border-red-200/80 bg-red-100 text-red-950 dark:border-red-500/30 dark:bg-red-500/12 dark:text-red-100 dark:shadow-[0_0_20px_-8px_rgba(248,113,113,0.35)]",
+        inconclusive:
+          "border-sky-200/80 bg-sky-100 text-sky-950 dark:border-sky-500/25 dark:bg-sky-500/12 dark:text-sky-100 dark:shadow-[0_0_20px_-8px_rgba(56,189,248,0.35)]",
         outline: "text-zinc-950 dark:text-zinc-50",
       },
     },

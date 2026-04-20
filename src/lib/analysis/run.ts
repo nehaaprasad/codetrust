@@ -158,7 +158,7 @@ export async function analyzeFiles(
 
   const dimensionScores = dimensionScoresFromIssues(prFilteredIssues);
   const score = weightedTrustScore(dimensionScores);
-  const decision = decisionFromScore(score, prFilteredIssues);
+  const decision = decisionFromScore(score, prFilteredIssues, { usedLlm });
   let summary = buildSummary(decision, prFilteredIssues);
   if (summaryNote?.trim()) {
     summary = `${summary} ${summaryNote.trim()}`;

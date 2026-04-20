@@ -18,5 +18,12 @@ export function buildSummary(
   if (decision === "RISKY") {
     return "Notable issues found; review before shipping.";
   }
+  if (decision === "INCONCLUSIVE") {
+    return (
+      "Pattern rules found no issues, but the AI reasoning pass did not run — " +
+      "this result is not a confident pass. Enable OpenAI (set OPENAI_API_KEY) " +
+      "for a trustworthy verdict, or have a human review the changes."
+    );
+  }
   return "No blocking issues detected by automated checks.";
 }

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type VerdictFilter = "all" | "SAFE" | "RISKY" | "BLOCK";
+export type VerdictFilter = "all" | "SAFE" | "RISKY" | "BLOCK" | "INCONCLUSIVE";
 
 type DashboardUiState = {
   verdictFilter: VerdictFilter;

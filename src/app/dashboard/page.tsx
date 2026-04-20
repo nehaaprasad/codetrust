@@ -42,10 +42,11 @@ type Row = {
 
 function verdictBadgeVariant(
   d: string,
-): "default" | "secondary" | "risky" | "block" {
+): "default" | "secondary" | "risky" | "block" | "inconclusive" {
   if (d === "SAFE") return "default";
   if (d === "RISKY") return "risky";
   if (d === "BLOCK") return "block";
+  if (d === "INCONCLUSIVE") return "inconclusive";
   return "secondary";
 }
 
@@ -58,7 +59,7 @@ type GitHubRepoLite = { fullName: string; htmlUrl: string };
 type UsagePayload = {
   totalAnalyses: number;
   last7Days: number;
-  byDecision: { SAFE: number; RISKY: number; BLOCK: number };
+  byDecision: { SAFE: number; RISKY: number; BLOCK: number; INCONCLUSIVE: number };
   outcomeAccuracy: {
     totalWithOutcome: number;
     correct: number;
@@ -568,6 +569,7 @@ export default function DashboardPage() {
                       "SAFE",
                       "RISKY",
                       "BLOCK",
+                      "INCONCLUSIVE",
                     ] as const satisfies readonly VerdictFilter[]
                   ).map((v) => (
                     <Button

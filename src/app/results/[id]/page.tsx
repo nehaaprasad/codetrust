@@ -22,10 +22,11 @@ import { cn } from "@/lib/utils";
 
 function verdictBadgeVariant(
   d: string,
-): "default" | "secondary" | "risky" | "block" {
+): "default" | "secondary" | "risky" | "block" | "inconclusive" {
   if (d === "SAFE") return "default";
   if (d === "RISKY") return "risky";
   if (d === "BLOCK") return "block";
+  if (d === "INCONCLUSIVE") return "inconclusive";
   return "secondary";
 }
 
@@ -33,6 +34,7 @@ function verdictAccentBorder(d: string): string {
   if (d === "SAFE") return "border-l-zinc-400 dark:border-l-zinc-500";
   if (d === "RISKY") return "border-l-amber-500 dark:border-l-amber-400";
   if (d === "BLOCK") return "border-l-red-500 dark:border-l-red-400";
+  if (d === "INCONCLUSIVE") return "border-l-sky-500 dark:border-l-sky-400";
   return "border-l-zinc-300 dark:border-l-zinc-600";
 }
 
@@ -548,7 +550,9 @@ export default function ResultPage() {
           ) : null}
         </div>
 
-        {(data.decision === "SAFE" || data.decision === "RISKY") ? (
+        {(data.decision === "SAFE" ||
+          data.decision === "RISKY" ||
+          data.decision === "INCONCLUSIVE") ? (
           <OutcomeFeedback analysisId={id} currentOutcome={data.outcome} />
         ) : null}
       </main>

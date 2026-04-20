@@ -62,7 +62,7 @@ export async function GET() {
     },
   });
 
-  const byDecision = { SAFE: 0, RISKY: 0, BLOCK: 0 };
+  const byDecision = { SAFE: 0, RISKY: 0, BLOCK: 0, INCONCLUSIVE: 0 };
   for (const row of decisionGroups) {
     const k = row.decision as keyof typeof byDecision;
     if (k in byDecision) {

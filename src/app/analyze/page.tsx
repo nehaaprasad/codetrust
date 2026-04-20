@@ -78,10 +78,11 @@ async function waitForJobResult(
 
 function verdictBadgeVariant(
   d: string,
-): "default" | "secondary" | "risky" | "block" {
+): "default" | "secondary" | "risky" | "block" | "inconclusive" {
   if (d === "SAFE") return "default";
   if (d === "RISKY") return "risky";
   if (d === "BLOCK") return "block";
+  if (d === "INCONCLUSIVE") return "inconclusive";
   return "secondary";
 }
 

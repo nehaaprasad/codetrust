@@ -28,7 +28,7 @@ export async function GET(req: Request) {
     limit = Math.min(n, MAX_LIMIT);
   }
 
-  const validDecisions = new Set(["SAFE", "RISKY", "BLOCK"]);
+  const validDecisions = new Set(["SAFE", "RISKY", "BLOCK", "INCONCLUSIVE"]);
   if (decision && !validDecisions.has(decision)) {
     return NextResponse.json(
       { error: "Invalid decision filter (use SAFE, RISKY, or BLOCK)." },
