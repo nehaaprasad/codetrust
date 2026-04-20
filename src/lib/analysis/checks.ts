@@ -129,18 +129,29 @@ export function runDeterministicChecks(files: CodeFile[]): AnalysisIssue[] {
         line,
       );
     }
-    for (const re of SECRET_PATTERNS) {
-      if (re.test(content)) {
-        const line = firstLineForRegex(content, re);
-        push(
-          issues,
-          "security",
-          "critical",
-          "Possible hardcoded secret or private key detected.",
-          path,
-          line,
-        );
-        break;
+    // Secret-scan ONLY on code/config files. Documentation files
+    // (.md, .mdx, .rst, .txt) are where tutorials show readers the
+    // *shape* of an API key or token — the string is meant to look like
+    // a secret. Flagging it as `security (critical)` means a pure docs
+    // PR auto-BLOCKs, which happened on vercel/ai PR #14642 (rename
+    // refactor → BLOCK because of an example token inside
+    // `content/docs/.../mdx`). Real secret leaks almost always happen
+    // in source, JSON config, or `.env` files — those are still scanned.
+    const isDocMarkup = /\.(md|mdx|rst|txt)$/i.test(path);
+    if (!isDocMarkup) {
+      for (const re of SECRET_PATTERNS) {
+        if (re.test(content)) {
+          const line = firstLineForRegex(content, re);
+          push(
+            issues,
+            "security",
+            "critical",
+            "Possible hardcoded secret or private key detected.",
+            path,
+            line,
+          );
+          break;
+        }
       }
     }
     if (isJsLike && /(\$\{|\+)\s*['"]?\s*(SELECT|INSERT|DELETE|UPDATE)\b/i.test(content)) {
@@ -504,16 +515,35 @@ export function runDeterministicChecks(files: CodeFile[]): AnalysisIssue[] {
         line,
       );
     }
-    if (isJsLike && /\bwhile\s*\(\s*true\s*\)/.test(content)) {
-      const line = firstLineForRegex(content, /\bwhile\s*\(\s*true\s*\)/);
-      push(
-        issues,
-        "logic",
-        "low",
-        "Infinite while(true) loop — ensure there is a clear exit condition.",
-        path,
-        line,
-      );
+    if (isJsLike) {
+      // `while (true) { ... }` with a `break`/`return`/`throw` inside is the
+      // canonical Node polling / agent-loop idiom and appears everywhere in
+      // real code (see vercel/ai PR #14642 where three example files tripped
+      // this rule and the comment got laughed off). Only flag when the body
+      // has *no* exit keyword, which is the actually-suspicious case.
+      const whileTrueRe = /\bwhile\s*\(\s*true\s*\)\s*\{/;
+      const m = whileTrueRe.exec(content);
+      if (m) {
+        // Approximate "loop body" by looking at the next ~1500 characters
+        // after the `while(true) {`. A precise brace-matching parser would
+        // be nicer but is overkill — any real exit keyword in that window
+        // is strong evidence the loop is controlled.
+        const windowAfter = content.slice(m.index, m.index + 1500);
+        const hasExit = /\b(break|return|throw|process\.exit)\b/.test(
+          windowAfter,
+        );
+        if (!hasExit) {
+          const line = firstLineForRegex(content, whileTrueRe);
+          push(
+            issues,
+            "logic",
+            "low",
+            "while(true) loop with no visible break/return/throw — confirm it has an exit condition.",
+            path,
+            line,
+          );
+        }
+      }
     }
 
     // Performance
@@ -571,14 +601,20 @@ export function runDeterministicChecks(files: CodeFile[]): AnalysisIssue[] {
     }
 
     // Maintainability — only run on languages the engine actually reviews
-    // deeply. On a language we have no rules for (PHP, Java, Ruby, C++…),
-    // "file too long" and "long line" become the *only* findings, which is
-    // misleading: it frames the absence of deeper review as a clean bill of
-    // health with minor nits. For those languages we'd rather emit nothing
-    // and let the INCONCLUSIVE verdict surface the real story.
-    if (isDeeplySupportedLanguage(path)) {
+    // deeply, and never on test files. On an unsupported language
+    // (PHP, Java, Ruby, C++…), "file too long" and "long line" become the
+    // *only* findings, which frames the absence of deeper review as a
+    // clean bill of health with minor nits. On test files, length is a
+    // feature — a 900-line test suite is a sign of good coverage.
+    // The diff-scope filter in run.ts additionally ensures these
+    // stylistic findings only surface when the flagged line is part of
+    // the PR's change, so they stop firing on pure rename refactors.
+    if (isDeeplySupportedLanguage(path) && !isTestFile(path)) {
       const lines = content.split(/\r?\n/);
-      if (lines.length > 400) {
+      // Threshold raised from 400 to 600: 400 is aggressive for modern TS
+      // where a single Next.js page or Redux slice routinely runs 500
+      // lines. 600 still catches genuinely monolithic files.
+      if (lines.length > 600) {
         push(
           issues,
           "maintainability",

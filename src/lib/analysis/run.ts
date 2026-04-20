@@ -27,30 +27,45 @@ export type AnalysisResult = {
 };
 
 /**
- * Filter issues down to what is relevant for scoring a pull request.
+ * Filter issues down to what is actually attributable to this PR.
  *
- * Historically this function required every issue to have a line number *and*
- * be within ±`contextLines` of a changed line. That was too strict in two
- * ways, both of which allowed low-signal "100 / SAFE" verdicts on real PRs:
+ * This function has been through two previous contracts, each of which
+ * produced a specific failure mode in production:
  *
- *   1. Project-level findings (e.g. "no test files detected", long file, high
- *      TODO count) carry no line number and were silently dropped.
- *   2. File-level findings that happened to sit far from the diff (e.g. an
- *      empty `if err != nil {}` 200 lines away from the edited region) were
- *      dropped even though the reviewer is touching that same file.
+ *   v1 — strict ±5 line window. Dropped every project-level finding and
+ *        most file-level findings, producing "Score 100 / SAFE" verdicts
+ *        on real PRs. Rejected.
+ *   v2 — any-issue-in-any-touched-file. Fixed v1 but swung too far the
+ *        other way: a rename refactor that touched a 626-line file
+ *        triggered "File is very long" and "Infinite while(true) loop"
+ *        findings on code the PR never authored. Human-approved rename
+ *        PRs were being auto-BLOCKed because of tutorial example API
+ *        keys in unrelated `.mdx` files the PR happened to edit. Also
+ *        rejected — this is what senior reviewers lose trust over.
  *
- * The new contract:
+ * v3 (this) — diff-scoped line attribution:
  *
- *   - Issues with **no file path** — treat as project-level and always keep.
- *   - Issues in a file that is **part of the PR** — always keep, even if the
- *     line is outside the diff window. The reviewer is responsible for that
- *     file; surfacing existing problems is the point.
- *   - Issues in files **not** part of the PR — drop (otherwise unrelated
- *     noise from sibling files would dominate the verdict).
+ *   - Issues with **no filePath** are project-level. Always kept. These
+ *     describe the PR as a whole (e.g. "PR adds source but no tests").
  *
- * Rationale: the trust score must reflect real risk in the code under
- * review, not only the delta. If an engineer is editing a file that already
- * swallows errors, the score should notice.
+ *   - Issues with a filePath whose file is **not in this PR** are dropped.
+ *     A reviewer is not responsible for sibling files.
+ *
+ *   - Issues with a filePath but **no lineNumber** (or lineNumber === null)
+ *     are file-level findings about a file that IS in the PR. Kept as-is.
+ *     Example: "No test file exists alongside foo.ts".
+ *
+ *   - Issues with a filePath AND a lineNumber are per-line findings.
+ *     These are kept **only if the reported line was added or modified
+ *     by this PR** (i.e. appears in `addedLines`). A pre-existing
+ *     while(true) at line 42 of a file the PR only renamed on line 300
+ *     is not this PR's problem, and attributing it to the author
+ *     destroys trust in every subsequent finding.
+ *
+ * The net effect: a pure rename refactor produces a near-empty comment
+ * (correct), a new-file PR surfaces every issue in the new file
+ * (correct, since every line is in addedLines), and a targeted bugfix
+ * surfaces issues around the fix's lines (correct).
  */
 function filterToPrRelated(
   issues: AnalysisIssue[],
@@ -60,9 +75,25 @@ function filterToPrRelated(
     return issues;
   }
 
+  // Per-file lookup of which line numbers were added/modified. Built once
+  // up front so we're not rebuilding a Set per issue.
+  const addedLinesByFile = new Map<string, Set<number>>();
+  for (const [path, region] of Object.entries(changedRegions)) {
+    addedLinesByFile.set(
+      path,
+      new Set(region.addedLines.map((l) => l.lineNumber)),
+    );
+  }
+
   return issues.filter((issue) => {
     if (!issue.filePath) return true;
-    return Object.prototype.hasOwnProperty.call(changedRegions, issue.filePath);
+
+    const addedLines = addedLinesByFile.get(issue.filePath);
+    if (!addedLines) return false;
+
+    if (issue.lineNumber == null) return true;
+
+    return addedLines.has(issue.lineNumber);
   });
 }
 
