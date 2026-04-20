@@ -4,6 +4,7 @@ import {
   isTestFile,
 } from "./fileClassification";
 import { firstLineForRegex, firstLineMatching } from "./lineFind";
+import { runRulePacks } from "./rulePacks";
 import type { AnalysisIssue, IssueCategory } from "./types";
 
 export type CodeFile = { path: string; content: string };
@@ -72,6 +73,17 @@ export function runDeterministicChecks(files: CodeFile[]): AnalysisIssue[] {
     const isGo = ext === "go";
     const isPy = ext === "py";
     const isRs = ext === "rs";
+
+    // Framework-aware rule packs (Next.js, React, Prisma). Each pack
+    // gates itself further by path/content, so it's safe to invoke on
+    // every source file; test files and docs are excluded up front so
+    // we don't flag fixture code or tutorial snippets.
+    for (const issue of runRulePacks(file, {
+      isTest: isTestFile(path),
+      isSource: isSourceFile(path),
+    })) {
+      issues.push(issue);
+    }
 
     // Security
     if (/eval\s*\(/.test(content)) {
