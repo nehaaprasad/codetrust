@@ -9,8 +9,7 @@ import { isAsyncAnalysisEnabled } from "@/lib/queue/redisConnection";
 import { checkRateLimit, clientIpFromRequest } from "@/lib/rateLimit";
 import { analyzeBodySchema } from "@/lib/validation/analyze";
 import { assertWorkspaceMember } from "@/lib/workspaceAuth";
-
-const MAX_TOTAL_BYTES = 1_500_000;
+import { getAnalyzeMaxTotalBytes } from "@/lib/analysis/limits";
 
 function httpStatusForError(message: string): number {
   if (
@@ -121,10 +120,15 @@ export async function POST(req: Request) {
 
   try {
     const prepared = await resolveAnalyzeInput(data);
+    const maxTotalBytes = getAnalyzeMaxTotalBytes();
     const total = prepared.files.reduce((a, f) => a + f.content.length, 0);
-    if (total > MAX_TOTAL_BYTES) {
+    if (total > maxTotalBytes) {
       return NextResponse.json(
-        { error: "Combined source exceeds size limit." },
+        {
+          error: "Combined source exceeds size limit.",
+          totalBytes: total,
+          limitBytes: maxTotalBytes,
+        },
         { status: 413 },
       );
     }
