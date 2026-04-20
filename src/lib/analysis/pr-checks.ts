@@ -41,9 +41,12 @@ function checkAddedLineSecurity(
   _lines: string[],
 ) {
   const content = line.content;
+  const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
+  const isGo = ext === "go";
+  const isPy = ext === "py";
 
-  // Critical: eval() - code execution risk
-  if (/eval\s*\(/.test(content)) {
+  // Critical: eval() - JS eval or Python eval (same risk class).
+  if (/\beval\s*\(/.test(content)) {
     issues.push({
       category: "security",
       severity: "critical",
@@ -51,6 +54,80 @@ function checkAddedLineSecurity(
       filePath,
       lineNumber: line.lineNumber,
     });
+  }
+
+  // Go: command injection and TLS bypass on changed lines.
+  if (isGo) {
+    if (
+      /exec\.Command\s*\(\s*"(?:sh|bash|\/bin\/sh|\/bin\/bash)"\s*,\s*"-c"/.test(content) ||
+      /exec\.Command\s*\([^)]*fmt\.Sprintf\s*\(/.test(content)
+    ) {
+      issues.push({
+        category: "security",
+        severity: "critical",
+        message: "exec.Command via shell or fmt.Sprintf risks command injection",
+        filePath,
+        lineNumber: line.lineNumber,
+      });
+    }
+    if (/InsecureSkipVerify\s*:\s*true\b/.test(content)) {
+      issues.push({
+        category: "security",
+        severity: "high",
+        message: "InsecureSkipVerify: true disables TLS certificate verification",
+        filePath,
+        lineNumber: line.lineNumber,
+      });
+    }
+  }
+
+  // Python: common RCE / injection patterns on changed lines.
+  if (isPy) {
+    if (/\bshell\s*=\s*True\b/.test(content)) {
+      issues.push({
+        category: "security",
+        severity: "critical",
+        message: "subprocess shell=True enables shell injection",
+        filePath,
+        lineNumber: line.lineNumber,
+      });
+    }
+    if (/\bpickle\.loads?\s*\(/.test(content)) {
+      issues.push({
+        category: "security",
+        severity: "high",
+        message: "pickle.load(s) on untrusted input allows RCE",
+        filePath,
+        lineNumber: line.lineNumber,
+      });
+    }
+    if (/\byaml\.load\s*\(/.test(content) && !/SafeLoader/.test(content)) {
+      issues.push({
+        category: "security",
+        severity: "high",
+        message: "yaml.load without SafeLoader can execute arbitrary code",
+        filePath,
+        lineNumber: line.lineNumber,
+      });
+    }
+    if (/\bos\.(?:system|popen)\s*\(/.test(content)) {
+      issues.push({
+        category: "security",
+        severity: "high",
+        message: "os.system/os.popen go through a shell; prefer subprocess with argv",
+        filePath,
+        lineNumber: line.lineNumber,
+      });
+    }
+    if (/\bverify\s*=\s*False\b/.test(content)) {
+      issues.push({
+        category: "security",
+        severity: "high",
+        message: "verify=False disables TLS certificate verification",
+        filePath,
+        lineNumber: line.lineNumber,
+      });
+    }
   }
 
   // Critical: hardcoded secrets
@@ -149,6 +226,18 @@ function checkAddedLineLogic(
       category: "logic",
       severity: "medium",
       message: "Empty catch block swallows errors",
+      filePath,
+      lineNumber: line.lineNumber,
+    });
+  }
+
+  // Medium: Python bare `except:` catches everything (incl. KeyboardInterrupt).
+  const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
+  if (ext === "py" && /^\s*except\s*:\s*(?:#.*)?$/.test(content)) {
+    issues.push({
+      category: "logic",
+      severity: "medium",
+      message: "Bare `except:` catches everything; use `except Exception` or a specific type",
       filePath,
       lineNumber: line.lineNumber,
     });

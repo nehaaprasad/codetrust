@@ -20,6 +20,30 @@ function push(
   });
 }
 
+/**
+ * 1-based line number of a Go `if err != nil { }` block whose body is empty
+ * (after ignoring blank lines and comment-only lines), or null if none.
+ * Kept as a dedicated scanner because `firstLineMatching`'s predicate doesn't
+ * receive surrounding lines.
+ */
+function findGoEmptyErrCheck(content: string): number | null {
+  const lines = content.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/^\s*if\s+err\s*!=\s*nil\s*\{\s*$/.test(lines[i])) continue;
+    let j = i + 1;
+    while (j < lines.length) {
+      const body = lines[j];
+      if (/^\s*$/.test(body) || /^\s*\/\//.test(body)) {
+        j += 1;
+        continue;
+      }
+      if (/^\s*\}\s*$/.test(body)) return i + 1;
+      break;
+    }
+  }
+  return null;
+}
+
 const SECRET_PATTERNS: RegExp[] = [
   /password\s*[:=]\s*['"][^'"]{4,}['"]/i,
   /api[_-]?key\s*[:=]\s*['"][^'"]{8,}['"]/i,
@@ -40,6 +64,8 @@ export function runDeterministicChecks(files: CodeFile[]): AnalysisIssue[] {
     const ext = path.split(".").pop()?.toLowerCase() ?? "";
     const isJsLike =
       ["ts", "tsx", "js", "jsx", "mjs", "cjs"].includes(ext) || path.endsWith(".vue");
+    const isGo = ext === "go";
+    const isPy = ext === "py";
 
     // Security
     if (/eval\s*\(/.test(content)) {
@@ -124,6 +150,195 @@ export function runDeterministicChecks(files: CodeFile[]): AnalysisIssue[] {
         path,
         line,
       );
+    }
+
+    // Go — security and error-handling heuristics.
+    // Patterns are line-anchored via firstLineForRegex, so they also work
+    // cleanly on patch-only content (added+context lines) for large files.
+    if (isGo) {
+      // Critical: shelling out via sh -c or fmt.Sprintf → command injection.
+      const goShellExec =
+        /exec\.Command\s*\(\s*"(?:sh|bash|\/bin\/sh|\/bin\/bash)"\s*,\s*"-c"/;
+      const goFmtExec = /exec\.Command\s*\([^)]*fmt\.Sprintf\s*\(/;
+      if (goShellExec.test(content) || goFmtExec.test(content)) {
+        const line =
+          firstLineForRegex(content, goShellExec) ??
+          firstLineForRegex(content, goFmtExec);
+        push(
+          issues,
+          "security",
+          "critical",
+          "exec.Command via shell or fmt.Sprintf risks command injection; pass argv directly.",
+          path,
+          line,
+        );
+      }
+      // High: TLS verification disabled.
+      if (/InsecureSkipVerify\s*:\s*true\b/.test(content)) {
+        const line = firstLineForRegex(content, /InsecureSkipVerify\s*:\s*true\b/);
+        push(
+          issues,
+          "security",
+          "high",
+          "InsecureSkipVerify: true disables TLS certificate verification.",
+          path,
+          line,
+        );
+      }
+      // Medium: weak hashes for anything beyond non-security checksums.
+      const goWeakHash = /\b(?:md5|sha1)\.(?:New|Sum|Sum224|Sum256)\s*\(/;
+      if (goWeakHash.test(content)) {
+        const line = firstLineForRegex(content, goWeakHash);
+        push(
+          issues,
+          "security",
+          "medium",
+          "MD5/SHA-1 are unsuitable for passwords/signatures; use SHA-256 or bcrypt.",
+          path,
+          line,
+        );
+      }
+      // Medium: `if err != nil { }` with an empty body swallows the error.
+      const goEmptyErrLine = findGoEmptyErrCheck(content);
+      if (goEmptyErrLine !== null) {
+        push(
+          issues,
+          "logic",
+          "medium",
+          "Empty `if err != nil {}` swallows the error; handle, wrap, or return it.",
+          path,
+          goEmptyErrLine,
+        );
+      }
+      // Low: fmt.Errorf with %s of err loses the wrapped chain; prefer %w.
+      const goErrPct = /fmt\.Errorf\s*\([^)]*%s[^)]*,\s*[^)]*\berr\b/;
+      if (goErrPct.test(content)) {
+        const line = firstLineForRegex(content, goErrPct);
+        push(
+          issues,
+          "maintainability",
+          "low",
+          "Use %w (not %s) when wrapping an error so errors.Is/As still work.",
+          path,
+          line,
+        );
+      }
+    }
+
+    // Python — security and error-handling heuristics.
+    if (isPy) {
+      // Critical: eval(); exec as a function (excluding .execute method).
+      if (/\beval\s*\(/.test(content)) {
+        const line = firstLineForRegex(content, /\beval\s*\(/);
+        push(
+          issues,
+          "security",
+          "critical",
+          "eval() executes arbitrary Python and is almost always unsafe.",
+          path,
+          line,
+        );
+      }
+      const pyExec = /(?<![.\w])exec\s*\(/;
+      if (pyExec.test(content)) {
+        const line = firstLineForRegex(content, pyExec);
+        push(
+          issues,
+          "security",
+          "high",
+          "exec() runs arbitrary Python — rethink or sandbox the call.",
+          path,
+          line,
+        );
+      }
+      // Critical: subprocess with shell=True enables shell injection.
+      if (/\bshell\s*=\s*True\b/.test(content)) {
+        const line = firstLineForRegex(content, /\bshell\s*=\s*True\b/);
+        push(
+          issues,
+          "security",
+          "critical",
+          "subprocess shell=True enables shell injection; pass argv list instead.",
+          path,
+          line,
+        );
+      }
+      // High: unsafe deserialization.
+      if (/\bpickle\.loads?\s*\(/.test(content)) {
+        const line = firstLineForRegex(content, /\bpickle\.loads?\s*\(/);
+        push(
+          issues,
+          "security",
+          "high",
+          "pickle.load(s) on untrusted input allows remote code execution.",
+          path,
+          line,
+        );
+      }
+      // High: yaml.load without SafeLoader is equivalent to RCE on hostile input.
+      const pyYaml = /\byaml\.load\s*\(/;
+      if (pyYaml.test(content) && !/SafeLoader/.test(content)) {
+        const line = firstLineForRegex(content, pyYaml);
+        push(
+          issues,
+          "security",
+          "high",
+          "yaml.load without SafeLoader can execute arbitrary code; use yaml.safe_load.",
+          path,
+          line,
+        );
+      }
+      // High: os.system / os.popen — shell-injection prone.
+      const pyOsShell = /\bos\.(?:system|popen)\s*\(/;
+      if (pyOsShell.test(content)) {
+        const line = firstLineForRegex(content, pyOsShell);
+        push(
+          issues,
+          "security",
+          "high",
+          "os.system/os.popen run through a shell; prefer subprocess.run with argv.",
+          path,
+          line,
+        );
+      }
+      // High: requests verify=False / urllib3 DisableWarnings → TLS off.
+      if (/\bverify\s*=\s*False\b/.test(content)) {
+        const line = firstLineForRegex(content, /\bverify\s*=\s*False\b/);
+        push(
+          issues,
+          "security",
+          "high",
+          "verify=False disables TLS certificate verification on outbound requests.",
+          path,
+          line,
+        );
+      }
+      // Medium: weak hash for security purposes.
+      const pyWeakHash = /\bhashlib\.(?:md5|sha1)\s*\(/;
+      if (pyWeakHash.test(content)) {
+        const line = firstLineForRegex(content, pyWeakHash);
+        push(
+          issues,
+          "security",
+          "medium",
+          "hashlib.md5/sha1 are unsuitable for passwords/signatures; use sha256 or bcrypt.",
+          path,
+          line,
+        );
+      }
+      // Medium: bare `except:` silently catches SystemExit / KeyboardInterrupt.
+      const pyBareExcept = /^\s*except\s*:\s*(?:#.*)?$/;
+      if (firstLineForRegex(content, pyBareExcept) !== null) {
+        const line = firstLineForRegex(content, pyBareExcept);
+        push(
+          issues,
+          "logic",
+          "medium",
+          "Bare `except:` catches everything (incl. KeyboardInterrupt); catch Exception or a specific type.",
+          path,
+          line,
+        );
+      }
     }
 
     // Logic
@@ -231,21 +446,33 @@ export function runDeterministicChecks(files: CodeFile[]): AnalysisIssue[] {
     }
   }
 
-  // Testing: project-level
+  // Testing: project-level. Recognise conventions across JS/TS, Go, Python.
   const paths = files.map((f) => f.path);
   const hasTestFile = paths.some(
     (p) =>
-      /\.(test|spec)\.(t|j)sx?$/.test(p) ||
-      p.includes("__tests__") ||
-      p.includes("/e2e/"),
+      /\.(test|spec)\.(t|j)sx?$/.test(p) || // JS/TS: foo.test.ts, foo.spec.tsx
+      p.includes("__tests__") || // Jest convention
+      p.includes("/e2e/") ||
+      /_test\.go$/.test(p) || // Go: foo_test.go
+      /(^|\/)test_[^/]+\.py$/.test(p) || // Python: test_foo.py
+      /_test\.py$/.test(p) || // Python: foo_test.py
+      /(^|\/)tests?\//.test(p), // tests/ or test/ dir (py/go/js)
   );
-  const hasSource = paths.some((p) => /\.(tsx|jsx|vue)$/.test(p));
+  const hasSource = paths.some(
+    (p) =>
+      /\.(tsx|jsx|vue)$/.test(p) ||
+      (/\.go$/.test(p) && !/_test\.go$/.test(p)) ||
+      (/\.py$/.test(p) &&
+        !/(^|\/)test_[^/]+\.py$/.test(p) &&
+        !/_test\.py$/.test(p) &&
+        !/(^|\/)tests?\//.test(p)),
+  );
   if (hasSource && !hasTestFile && files.length >= 1) {
     push(
       issues,
       "testing",
       "medium",
-      "No test files detected alongside UI/source files.",
+      "No test files detected alongside source files.",
       paths[0] ?? "—",
       null,
     );
