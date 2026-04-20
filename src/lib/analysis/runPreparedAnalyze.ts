@@ -3,6 +3,8 @@ import {
   buildPrCommentBody,
   createOrUpdatePrComment,
 } from "@/lib/github/postPrComment";
+import { postInlineReviewComments } from "@/lib/github/postInlineReview";
+import { extractChangedLines } from "@/lib/analysis/diff-parser";
 import { isDatabaseConfigured } from "@/lib/db";
 import { canonicalRepoUrl } from "@/lib/github/repoUrl";
 import { repoUrlFromParsed } from "@/lib/github/parsePrUrl";
@@ -94,6 +96,28 @@ export async function runPreparedAnalyze(
         prCommentId = ref.commentId;
       } catch (e) {
         console.error("GitHub PR comment failed:", e);
+      }
+
+      // Inline review comments: attach each diff-line finding to its exact
+      // line in the Files Changed tab. Runs after the summary comment so a
+      // failure here never blocks the summary from being posted.
+      if (
+        process.env.GITHUB_POST_INLINE_REVIEW_COMMENTS !== "false" &&
+        prHeadSha?.trim() &&
+        prDiff?.trim()
+      ) {
+        try {
+          const changedRegions = extractChangedLines(prDiff).files;
+          await postInlineReviewComments({
+            token: ghToken,
+            parsed: parsedPr,
+            headSha: prHeadSha,
+            issues: result.issues,
+            changedRegions,
+          });
+        } catch (e) {
+          console.error("[inline-review] post failed:", e);
+        }
       }
     }
   }

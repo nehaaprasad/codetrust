@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { analyzeFiles } from "@/lib/analysis/run";
 import type { CodeFile } from "@/lib/analysis/checks";
 import { fetchPrFilesForAnalysis } from "@/lib/github/fetchPrFiles";
+import { fetchRawPrDiff } from "@/lib/github/diff";
 import { parseGithubPrUrl } from "@/lib/github/parsePrUrl";
 import {
   buildPrCommentBody,
   createOrUpdatePrComment,
 } from "@/lib/github/postPrComment";
+import { postInlineReviewComments } from "@/lib/github/postInlineReview";
+import { extractChangedLines } from "@/lib/analysis/diff-parser";
 import { isDatabaseConfigured, getPrisma } from "@/lib/db";
 import {
   updateAnalysisRerun,
@@ -42,6 +45,7 @@ export async function POST(
   const input = raw as StoredAnalysisInput;
   let files: CodeFile[];
   let rerunHeadSha: string | undefined;
+  let rerunPrDiff: string | undefined;
 
   if (input.kind === "paste") {
     if (!input.files?.length) {
@@ -60,6 +64,7 @@ export async function POST(
       const pr = await fetchPrFilesForAnalysis(input.prUrl, token);
       files = pr.files;
       rerunHeadSha = pr.headSha;
+      rerunPrDiff = await fetchRawPrDiff(input.prUrl, token);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to fetch pull request.";
       return NextResponse.json({ error: msg }, { status: 502 });
@@ -70,6 +75,7 @@ export async function POST(
 
   const result = await analyzeFiles(files, {
     workspaceId: row.workspaceId,
+    prDiff: rerunPrDiff,
   });
 
   let prCommentPatch: { url: string | null; id: string | null } | undefined;
@@ -92,6 +98,25 @@ export async function POST(
         prCommentPatch = { url: ref.htmlUrl, id: ref.commentId };
       } catch (e) {
         console.error("GitHub PR comment on rerun failed:", e);
+      }
+
+      if (
+        process.env.GITHUB_POST_INLINE_REVIEW_COMMENTS !== "false" &&
+        rerunHeadSha &&
+        rerunPrDiff?.trim()
+      ) {
+        try {
+          const changedRegions = extractChangedLines(rerunPrDiff).files;
+          await postInlineReviewComments({
+            token,
+            parsed,
+            headSha: rerunHeadSha,
+            issues: result.issues,
+            changedRegions,
+          });
+        } catch (e) {
+          console.error("[inline-review] rerun post failed:", e);
+        }
       }
     }
   }
