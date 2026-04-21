@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import { useState } from "react";
 import { AppNav } from "@/components/app-nav";
+import {
+  AutoAnalyzeToggle,
+  useAutoAnalyzeSubscriptions,
+} from "@/components/auto-analyze-toggle";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,6 +39,11 @@ export default function ConnectPage() {
     },
     enabled: status === "authenticated",
   });
+
+  const subsQ = useAutoAnalyzeSubscriptions(status === "authenticated");
+  const subscribedFullNames = new Set(
+    (subsQ.data?.items ?? []).filter((i) => i.enabled).map((i) => i.fullName),
+  );
 
   const prsQ = useQuery({
     queryKey: ["github-prs", selected?.fullName, prListState],
@@ -86,12 +95,12 @@ export default function ConnectPage() {
             </span>
           </h1>
           <p className="max-w-2xl text-base leading-relaxed text-zinc-600 dark:text-zinc-400 sm:text-lg">
-            Sign in with GitHub so we can list your repos and open PRs. Analysis still uses the
-            server{" "}
-            <code className="rounded bg-zinc-200 px-1.5 py-0.5 font-mono text-sm dark:bg-zinc-800">
-              GITHUB_TOKEN
-            </code>{" "}
-            to fetch files and post comments.
+            Sign in with GitHub to list your repos and open PRs, or flip
+            <span className="mx-1 inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10.5px] font-medium text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-300">
+              <span className="size-1 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden="true" />
+              Auto-analyze on
+            </span>
+            on any repo — every new PR gets analyzed and commented on automatically.
           </p>
         </header>
 
@@ -132,33 +141,54 @@ export default function ConnectPage() {
                     <div className="border-b border-zinc-200/90 bg-zinc-50/95 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900/70">
                       <div className="grid grid-cols-[1fr_auto] gap-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400">
                         <span>Repository</span>
-                        <span className="text-right">Access</span>
+                        <span className="text-right">Auto-analyze</span>
                       </div>
                     </div>
                     <ul className="max-h-72 divide-y divide-zinc-200 overflow-y-auto dark:divide-zinc-800/80">
-                      {reposQ.data?.map((r) => (
-                        <li key={r.id}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelected(r);
-                              setPrListState("open");
-                            }}
-                            className={`grid w-full grid-cols-[1fr_auto] gap-2 px-3 py-2.5 text-left text-sm transition-colors ${
+                      {reposQ.data?.map((r) => {
+                        const [rOwner, rRepo] = r.fullName.split("/");
+                        const isSubscribed = subscribedFullNames.has(r.fullName);
+                        return (
+                          <li
+                            key={r.id}
+                            className={`grid grid-cols-[1fr_auto] items-center gap-2 px-3 py-2.5 transition-colors ${
                               selected?.id === r.id
-                                ? "bg-zinc-100 text-zinc-950 dark:bg-white/[0.08] dark:text-zinc-50"
+                                ? "bg-zinc-100 dark:bg-white/[0.08]"
                                 : "hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
                             }`}
                           >
-                            <span className="min-w-0 truncate font-medium text-zinc-900 dark:text-zinc-100">
-                              {r.fullName}
-                            </span>
-                            <span className="shrink-0 text-right text-[11px] text-zinc-500 dark:text-zinc-400">
-                              {r.private ? "Private" : "Public"}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelected(r);
+                                setPrListState("open");
+                              }}
+                              className="min-w-0 text-left"
+                              aria-pressed={selected?.id === r.id}
+                            >
+                              <span
+                                className={`block truncate text-sm font-medium ${
+                                  selected?.id === r.id
+                                    ? "text-zinc-950 dark:text-zinc-50"
+                                    : "text-zinc-900 dark:text-zinc-100"
+                                }`}
+                              >
+                                {r.fullName}
+                              </span>
+                              <span className="mt-0.5 block text-[10.5px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                {r.private ? "Private" : "Public"}
+                              </span>
+                            </button>
+                            {rOwner && rRepo ? (
+                              <AutoAnalyzeToggle
+                                owner={rOwner}
+                                repo={rRepo}
+                                subscribed={isSubscribed}
+                              />
+                            ) : null}
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 )}
