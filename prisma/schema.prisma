@@ -152,6 +152,31 @@ model AuditLog {
   @@index([workspaceId])
 }
 
+/**
+ * Auto-analyze subscription for a single GitHub repository.
+ *
+ * Created when a signed-in user flips the "Auto-analyze" toggle on
+ * `/connect`. The row stores the GitHub webhook id we installed on
+ * their repo so we can remove it again on toggle-off. `fullName` is
+ * the canonical `owner/repo` string and is unique per row — we never
+ * stack more than one subscription on the same repo.
+ */
+model RepoSubscription {
+  id        String   @id @default(cuid())
+  /** OAuth `sub` of the user who enabled auto-analyze. */
+  userId    String
+  owner     String
+  repo      String
+  fullName  String   @unique
+  /** GitHub webhook id returned by `POST /repos/{o}/{r}/hooks`. */
+  hookId    Int
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
 /** Outbound HTTPS webhooks for analysis completion (user-defined URL). */
 model DeveloperWebhook {
   id          String     @id @default(cuid())
