@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { AppNav } from "@/components/app-nav";
+import { AutoAnalyzedReposCard } from "@/components/auto-analyzed-repos-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -290,6 +291,11 @@ export default function DashboardPage() {
                     </CardHeader>
                   </Card>
                 ) : null}
+
+                <AutoAnalyzedReposCard
+                  enabled={dbReady && sessionStatus === "authenticated"}
+                  recentRuns={q.data ?? []}
+                />
 
                 <Card className="overflow-hidden rounded-2xl border-zinc-200/90 dark:border-zinc-700/55">
                   <CardHeader>
