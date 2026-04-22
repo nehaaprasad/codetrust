@@ -1,4 +1,5 @@
 import { Octokit } from "@octokit/rest";
+import { normaliseIssueMessage } from "@/lib/analysis/normaliseIssue";
 import type { AnalysisResult } from "@/lib/analysis/run";
 import type { AnalysisIssue } from "@/lib/analysis/types";
 import { buildEvidenceLink, type EvidenceContext } from "./evidenceLinks";
@@ -83,24 +84,10 @@ type IssueGroup = {
   occurrences: GroupedOccurrence[];
 };
 
-/**
- * Normalise a rule message so two issues from the same rule but different
- * numeric details (e.g. "(626 lines)" vs "(482 lines)") collapse into a
- * single group. Stripped: any `(N …)` parenthetical whose first token is a
- * number, plus multiple adjacent spaces left behind.
- */
-function normaliseMessage(msg: string): string {
-  return msg
-    .trim()
-    .replace(/\s*\(\s*\d+[^)]*\)/g, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
-
 function groupIssues(issues: AnalysisIssue[]): IssueGroup[] {
   const map = new Map<string, IssueGroup>();
   for (const i of issues) {
-    const normalised = normaliseMessage(i.message);
+    const normalised = normaliseIssueMessage(i.message);
     const key = `${i.category}|${i.severity}|${normalised}`;
     let g = map.get(key);
     if (!g) {

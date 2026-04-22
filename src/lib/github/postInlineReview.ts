@@ -1,5 +1,6 @@
 import { Octokit } from "@octokit/rest";
 import type { ChangedFileRegion } from "@/lib/analysis/diff-parser";
+import { normaliseIssueMessage } from "@/lib/analysis/normaliseIssue";
 import type { AnalysisIssue } from "@/lib/analysis/types";
 import type { ParsedPrUrl } from "./parsePrUrl";
 
@@ -40,10 +41,15 @@ type ReviewCommentSeed = {
  *      actually in the PR's added lines. GitHub rejects inline
  *      comments on lines that aren't part of the diff, and a single
  *      bad entry fails the whole review.
- *   2. Rank by severity, cap at `MAX_INLINE_COMMENTS`.
- *   3. Delete any prior inline comments we left on this PR (matched
+ *   2. **Deduplicate** findings that differ only by line number — the
+ *      LLM often returns "line 76 exposes X", "line 88 exposes X",
+ *      "line 100 exposes X" as three separate issues. We collapse
+ *      those into one inline comment on the earliest line and list
+ *      the rest in the body.
+ *   3. Rank by severity, cap at `MAX_INLINE_COMMENTS`.
+ *   4. Delete any prior inline comments we left on this PR (matched
  *      by our hidden marker) so reruns stay clean.
- *   4. Post a single review with `event: "COMMENT"` (no approval,
+ *   5. Post a single review with `event: "COMMENT"` (no approval,
  *      no change-request — we just want threaded comments).
  *
  * Returns the review ID on success, or `null` if nothing was posted
@@ -98,6 +104,29 @@ export async function postInlineReviewComments(args: {
   }
 }
 
+type EligibleIssue = {
+  issue: AnalysisIssue;
+  path: string;
+  line: number;
+  /** Preserves the original array index so same-severity ties render in diff order. */
+  idx: number;
+};
+
+type InlineGroup = {
+  path: string;
+  category: string;
+  severity: string;
+  normalisedMessage: string;
+  /** Primary line (earliest occurrence) — where the inline comment is anchored. */
+  primaryLine: number;
+  /** Primary issue — owns the message body text. */
+  primaryIssue: AnalysisIssue;
+  /** Additional line numbers on the same file where this same finding applies. */
+  additionalLines: number[];
+  /** Smallest original index across the group — controls tiebreak ordering. */
+  minIdx: number;
+};
+
 /**
  * Keep only findings that the GitHub inline-review API will accept:
  *
@@ -105,10 +134,14 @@ export async function postInlineReviewComments(args: {
  *   - A `lineNumber` that the PR actually added or modified on the
  *     right-hand side (pure-context lines on the left are rejected).
  *
- * Findings surviving that gate are ranked critical → high → medium →
- * low, truncated to `MAX_INLINE_COMMENTS`. Within a severity tier we
- * keep original order so two high-sevs at lines 12 and 40 render in
- * diff order.
+ * Then group findings that are the same rule / same severity / same
+ * file, differing only by numeric details (line number, length).
+ * Each group becomes one inline comment anchored at the earliest
+ * matching line, with any additional lines listed in the body.
+ *
+ * Finally rank critical → high → medium → low, truncate to
+ * `MAX_INLINE_COMMENTS`, and preserve original order within each
+ * severity tier so comments render in diff order.
  *
  * Exported for scenario tests.
  */
@@ -116,8 +149,7 @@ export function selectInlineCandidates(
   issues: AnalysisIssue[],
   changedRegions: Record<string, ChangedFileRegion>,
 ): ReviewCommentSeed[] {
-  const eligible: Array<{ seed: ReviewCommentSeed; severity: string; idx: number }> = [];
-
+  const eligible: EligibleIssue[] = [];
   issues.forEach((issue, idx) => {
     const path = issue.filePath?.trim();
     const line = issue.lineNumber;
@@ -129,32 +161,87 @@ export function selectInlineCandidates(
     const inDiff = region.addedLines.some((l) => l.lineNumber === line);
     if (!inDiff) return;
 
-    eligible.push({
-      seed: { path, line, body: formatInlineBody(issue) },
-      severity: issue.severity,
-      idx,
-    });
+    eligible.push({ issue, path, line, idx });
   });
 
-  eligible.sort((a, b) => {
+  const groups = groupEligibleByRule(eligible);
+
+  groups.sort((a, b) => {
     const sev = (SEVERITY_RANK[b.severity] ?? 0) - (SEVERITY_RANK[a.severity] ?? 0);
     if (sev !== 0) return sev;
-    return a.idx - b.idx;
+    return a.minIdx - b.minIdx;
   });
 
-  return eligible.slice(0, MAX_INLINE_COMMENTS).map((e) => e.seed);
+  return groups.slice(0, MAX_INLINE_COMMENTS).map((g) => ({
+    path: g.path,
+    line: g.primaryLine,
+    body: formatInlineBody(g.primaryIssue, g.additionalLines),
+  }));
+}
+
+/**
+ * Collapse eligible issues by (path, category, severity,
+ * normalisedMessage). Within each group we keep the earliest line as
+ * the anchor and record all other matching lines for the body.
+ */
+function groupEligibleByRule(eligible: EligibleIssue[]): InlineGroup[] {
+  const map = new Map<string, InlineGroup>();
+
+  for (const e of eligible) {
+    const normalised = normaliseIssueMessage(e.issue.message);
+    const key = `${e.path}|${e.issue.category}|${e.issue.severity}|${normalised}`;
+
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, {
+        path: e.path,
+        category: e.issue.category,
+        severity: e.issue.severity,
+        normalisedMessage: normalised,
+        primaryLine: e.line,
+        primaryIssue: e.issue,
+        additionalLines: [],
+        minIdx: e.idx,
+      });
+      continue;
+    }
+
+    if (e.line < existing.primaryLine) {
+      existing.additionalLines.push(existing.primaryLine);
+      existing.primaryLine = e.line;
+      existing.primaryIssue = e.issue;
+    } else if (e.line !== existing.primaryLine) {
+      existing.additionalLines.push(e.line);
+    }
+    if (e.idx < existing.minIdx) existing.minIdx = e.idx;
+  }
+
+  for (const g of map.values()) {
+    g.additionalLines.sort((a, b) => a - b);
+  }
+
+  return [...map.values()];
 }
 
 /**
  * Markdown body for a single inline comment. Kept short — one line of
  * context, one of finding, one of severity tag, and the hidden marker
  * for rerun cleanup. Long explanations belong in the summary comment;
- * inline is a pointer at the problem.
+ * inline is a pointer at the problem. When the same finding applies
+ * to multiple lines, we note the others inline so the reviewer sees
+ * the full picture from one thread.
  */
-function formatInlineBody(issue: AnalysisIssue): string {
+function formatInlineBody(
+  issue: AnalysisIssue,
+  additionalLines: readonly number[],
+): string {
   const tag = `**${issue.category}** · ${issue.severity}`;
   const msg = issue.message.trim();
-  return `${tag}\n\n${msg}\n\n${INLINE_MARKER}`;
+  const alsoLine =
+    additionalLines.length > 0
+      ? `\n\n_Also on ${additionalLines.length === 1 ? "line" : "lines"} ${additionalLines.join(", ")}._`
+      : "";
+  return `${tag}\n\n${msg}${alsoLine}\n\n${INLINE_MARKER}`;
 }
 
 /**
